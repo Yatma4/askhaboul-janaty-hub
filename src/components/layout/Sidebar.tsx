@@ -1,17 +1,7 @@
-import { 
-  Users, 
-  Wallet, 
-  LayoutDashboard, 
-  Building2, 
-  Calendar, 
-  FileText, 
-  Settings, 
-  LogOut,
-  Star
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
+import { Users, Wallet, LayoutDashboard, Building2, Calendar, FileText, Settings, LogOut, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   currentPage: string;
@@ -22,17 +12,15 @@ const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
   const { user, logout } = useAuth();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-    { id: 'members', label: 'Membres', icon: Users },
-    { id: 'commissions', label: 'Commissions', icon: Building2 },
-    { id: 'events', label: 'Événements', icon: Calendar },
-    { id: 'finance', label: 'Finances', icon: Wallet },
-    { id: 'reports', label: 'Rapports', icon: FileText },
+    { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+    { id: "members", label: "Membres", icon: Users },
+    { id: "commissions", label: "Commissions", icon: Building2 },
+    { id: "events", label: "Événements", icon: Calendar },
+    { id: "finance", label: "Finances", icon: Wallet },
+    { id: "reports", label: "Rapports", icon: FileText },
   ];
 
-  const adminItems = [
-    { id: 'settings', label: 'Paramètres', icon: Settings },
-  ];
+  const adminItems = [{ id: "settings", label: "Paramètres", icon: Settings }];
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border flex flex-col shadow-lg z-50">
@@ -43,7 +31,7 @@ const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
             <Star className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-foreground text-sm leading-tight">Dahira Daara</h1>
+            <h1 className="font-bold text-foreground text-sm leading-tight">Daara</h1>
             <p className="text-xs text-muted-foreground">Askhaboul Janaty</p>
           </div>
         </div>
@@ -55,31 +43,23 @@ const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className={cn(
-              'nav-item w-full',
-              currentPage === item.id && 'nav-item-active'
-            )}
+            className={cn("nav-item w-full", currentPage === item.id && "nav-item-active")}
           >
             <item.icon className="w-5 h-5" />
             <span>{item.label}</span>
           </button>
         ))}
 
-        {user?.role === 'admin' && (
+        {user?.role === "admin" && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Administration
-              </p>
+              <p className="px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Administration</p>
             </div>
             {adminItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={cn(
-                  'nav-item w-full',
-                  currentPage === item.id && 'nav-item-active'
-                )}
+                className={cn("nav-item w-full", currentPage === item.id && "nav-item-active")}
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
@@ -98,11 +78,9 @@ const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
-              {user?.username}
-            </p>
+            <p className="text-sm font-medium text-foreground truncate">{user?.username}</p>
             <p className="text-xs text-muted-foreground capitalize">
-              {user?.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+              {user?.role === "admin" ? "Administrateur" : "Utilisateur"}
             </p>
           </div>
         </div>
