@@ -88,9 +88,9 @@ const DashboardLayout = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Réinitialiser les données</DialogTitle>
+                    <DialogTitle>Supprimer toutes les données</DialogTitle>
                     <DialogDescription>
-                      Cette action va réinitialiser toutes les données de l'application aux valeurs de démonstration.
+                      Cette action va supprimer définitivement toutes les données de l'application (membres, événements, cotisations, commissions, transactions).
                       Entrez le code de confirmation pour continuer.
                     </DialogDescription>
                   </DialogHeader>
