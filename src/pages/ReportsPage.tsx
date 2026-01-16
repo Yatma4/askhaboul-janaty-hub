@@ -176,15 +176,17 @@ const ReportsPage = () => {
     doc.setFont('helvetica', 'bold');
     doc.text('Statistiques', 14, yPos);
     
+    const tauxRecouvrement = adultMembers.length > 0 ? Math.round((paidMembers * 100) / adultMembers.length) : 0;
+    
     autoTable(doc, {
       startY: yPos + 6,
       head: [['Indicateur', 'Valeur']],
       body: [
-        ['Nombre total de membres adultes', `${adultMembers.length}`],
-        ['Membres ayant payé', `${paidMembers}`],
-        ['Taux de recouvrement', `${adultMembers.length > 0 ? Math.round((paidMembers / adultMembers.length) * 100) : 0}%`],
-        ['Hommes adultes', `${adultMembers.filter(m => m.gender === 'Homme').length}`],
-        ['Femmes adultes', `${adultMembers.filter(m => m.gender === 'Femme').length}`],
+        ['Nombre total de membres adultes', String(adultMembers.length)],
+        ['Membres ayant payé', String(paidMembers)],
+        ['Taux de recouvrement', `${tauxRecouvrement}%`],
+        ['Hommes adultes', String(adultMembers.filter(m => m.gender === 'Homme').length)],
+        ['Femmes adultes', String(adultMembers.filter(m => m.gender === 'Femme').length)],
       ],
       theme: 'striped',
       headStyles: { fillColor: [14, 165, 233] },
@@ -439,7 +441,7 @@ const ReportsPage = () => {
                   <p className="text-sm text-muted-foreground">Cotisations collectées</p>
                   <p className="text-2xl font-bold text-primary">{totalCotisations.toLocaleString()} F</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {paidMembers} / {adultMembers.length} membres
+                    {paidMembers} sur {adultMembers.length} membres
                   </p>
                 </div>
 
