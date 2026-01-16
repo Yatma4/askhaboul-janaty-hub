@@ -18,7 +18,10 @@ interface DataContextType {
   addCotisation: (cotisation: Omit<Cotisation, 'id'>) => void;
   updateCotisation: (id: string, cotisation: Partial<Cotisation>) => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  resetData: () => void;
 }
+
+const RESET_CODE = 'DAHIRA2024';
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
@@ -227,6 +230,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions(prev => [...prev, newTransaction]);
   };
 
+  const resetData = () => {
+    setMembers(initialMembers);
+    setCommissions(initialCommissions);
+    setEvents(initialEvents);
+    setCotisations(initialCotisations);
+    setTransactions(initialTransactions);
+  };
+
   return (
     <DataContext.Provider value={{
       members,
@@ -245,6 +256,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCotisation,
       updateCotisation,
       addTransaction,
+      resetData,
     }}>
       {children}
     </DataContext.Provider>
