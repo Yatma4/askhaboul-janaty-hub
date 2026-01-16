@@ -242,14 +242,14 @@ const MembersPage = () => {
                   <div className="space-y-2">
                     <Label htmlFor="commission">Commission</Label>
                     <Select
-                      value={formData.commissionId}
-                      onValueChange={(value) => setFormData({ ...formData, commissionId: value })}
+                      value={formData.commissionId || "none"}
+                      onValueChange={(value) => setFormData({ ...formData, commissionId: value === "none" ? "" : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une commission" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucune</SelectItem>
+                        <SelectItem value="none">Aucune</SelectItem>
                         {commissions.map((commission) => (
                           <SelectItem key={commission.id} value={commission.id}>
                             {commission.name}
