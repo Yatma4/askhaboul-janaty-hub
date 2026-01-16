@@ -113,8 +113,8 @@ const ReportsPage = () => {
     });
     doc.text(`Date de l'événement: ${eventDate}`, 14, 55);
     doc.text(`Date du rapport: ${new Date().toLocaleDateString('fr-FR')}`, 14, 62);
-    doc.text(`Cotisation Homme: ${selectedEvent.cotisationHomme.toLocaleString()} F CFA`, 14, 69);
-    doc.text(`Cotisation Femme: ${selectedEvent.cotisationFemme.toLocaleString()} F CFA`, 14, 76);
+    doc.text(`Cotisation Homme: ${selectedEvent.cotisationHomme} F CFA`, 14, 69);
+    doc.text(`Cotisation Femme: ${selectedEvent.cotisationFemme} F CFA`, 14, 76);
     
     // Financial Summary
     doc.setFontSize(14);
@@ -125,11 +125,11 @@ const ReportsPage = () => {
       startY: 98,
       head: [['Description', 'Montant (F CFA)']],
       body: [
-        ['Cotisations collectées', `${totalCotisations.toLocaleString()} F`],
-        ['Autres recettes', `${totalIncome.toLocaleString()} F`],
-        ['Total des entrées', `${(totalCotisations + totalIncome).toLocaleString()} F`],
-        ['Total des dépenses', `${totalExpenses.toLocaleString()} F`],
-        ['Solde final', `${(totalCotisations + totalIncome - totalExpenses).toLocaleString()} F`],
+        ['Cotisations collectées', `${totalCotisations} F`],
+        ['Autres recettes', `${totalIncome} F`],
+        ['Total des entrées', `${totalCotisations + totalIncome} F`],
+        ['Total des dépenses', `${totalExpenses} F`],
+        ['Solde final', `${totalCotisations + totalIncome - totalExpenses} F`],
       ],
       theme: 'striped',
       headStyles: { fillColor: [14, 165, 233] },
@@ -148,8 +148,8 @@ const ReportsPage = () => {
       return [
         member ? `${member.firstName} ${member.lastName}` : 'Inconnu',
         member?.gender || '-',
-        `${cot.amount.toLocaleString()} F`,
-        `${cot.paidAmount.toLocaleString()} F`,
+        `${cot.amount} F`,
+        `${cot.paidAmount} F`,
         cot.isPaid ? 'Payé' : 'En attente',
       ];
     });
@@ -210,7 +210,7 @@ const ReportsPage = () => {
       t.type === 'income' ? 'Recette' : 'Dépense',
       t.category,
       t.description,
-      `${t.amount.toLocaleString()} F`,
+      `${t.amount} F`,
     ]);
     
     autoTable(doc, {
