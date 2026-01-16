@@ -8,6 +8,25 @@ export interface User {
 
 export type Gender = 'Homme' | 'Femme';
 
+export type MemberRole = 
+  | 'Jeuwrigne'
+  | 'Secrétaire Général'
+  | 'Président Commission Organisation'
+  | 'Vice-Président Commission Organisation'
+  | 'Président Commission'
+  | 'Vice-Président Commission'
+  | 'Membre';
+
+export const MEMBER_ROLES: { value: MemberRole; label: string }[] = [
+  { value: 'Jeuwrigne', label: 'Jeuwrigne du Dahira' },
+  { value: 'Secrétaire Général', label: 'Secrétaire Général' },
+  { value: 'Président Commission Organisation', label: 'Président Commission Organisation' },
+  { value: 'Vice-Président Commission Organisation', label: 'Vice-Président Commission Organisation' },
+  { value: 'Président Commission', label: 'Président de Commission' },
+  { value: 'Vice-Président Commission', label: 'Vice-Président de Commission' },
+  { value: 'Membre', label: 'Membre Simple' },
+];
+
 export interface Member {
   id: string;
   firstName: string;
@@ -16,8 +35,7 @@ export interface Member {
   age: number;
   phone: string;
   address: string;
-  function: string;
-  position: string;
+  role: MemberRole;
   commissionId?: string;
   commissionRole?: 'president' | 'vice-president' | 'member';
   isAdult: boolean;
@@ -37,7 +55,8 @@ export interface Event {
   id: string;
   name: string;
   date: Date;
-  cotisationAmount: number;
+  cotisationHomme: number;
+  cotisationFemme: number;
   description?: string;
   status: 'upcoming' | 'ongoing' | 'completed';
 }

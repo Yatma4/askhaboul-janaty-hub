@@ -91,14 +91,17 @@ const FinancePage = () => {
   const handleCotisationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const event = events.find(e => e.id === cotisationForm.eventId);
-    if (!event) return;
+    const member = members.find(m => m.id === cotisationForm.memberId);
+    if (!event || !member) return;
+
+    const cotisationAmount = member.gender === 'Homme' ? event.cotisationHomme : event.cotisationFemme;
 
     addCotisation({
       memberId: cotisationForm.memberId,
       eventId: cotisationForm.eventId,
-      amount: event.cotisationAmount,
+      amount: cotisationAmount,
       paidAmount: cotisationForm.paidAmount,
-      isPaid: cotisationForm.paidAmount >= event.cotisationAmount,
+      isPaid: cotisationForm.paidAmount >= cotisationAmount,
       paidAt: cotisationForm.paidAmount > 0 ? new Date() : undefined,
     });
     setIsCotisationDialogOpen(false);
@@ -163,7 +166,7 @@ const FinancePage = () => {
                       <SelectContent>
                         {events.map((event) => (
                           <SelectItem key={event.id} value={event.id}>
-                            {event.name} - {event.cotisationAmount.toLocaleString()} F
+                            {event.name} (H: {event.cotisationHomme.toLocaleString()} F / F: {event.cotisationFemme.toLocaleString()} F)
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -156,7 +156,7 @@ const ReportsPage = () => {
                   })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Cotisation: {selectedEvent.cotisationAmount.toLocaleString()} F CFA
+                  Cotisation Homme: {selectedEvent.cotisationHomme.toLocaleString()} F CFA | Femme: {selectedEvent.cotisationFemme.toLocaleString()} F CFA
                 </p>
               </div>
 

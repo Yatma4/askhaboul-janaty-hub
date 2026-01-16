@@ -14,7 +14,7 @@ const DashboardLayout = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={setCurrentPage} />;
       case 'members':
         return <MembersPage />;
       case 'commissions':

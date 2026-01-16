@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Calendar, Edit, Clock, DollarSign } from 'lucide-react';
+import { Plus, Calendar, Edit, Clock, DollarSign, Users } from 'lucide-react';
 import { Event } from '@/types';
 
 const EventsPage = () => {
@@ -31,7 +31,8 @@ const EventsPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     date: '',
-    cotisationAmount: 0,
+    cotisationHomme: 0,
+    cotisationFemme: 0,
     description: '',
     status: 'upcoming' as 'upcoming' | 'ongoing' | 'completed',
   });
@@ -42,7 +43,8 @@ const EventsPage = () => {
     setFormData({
       name: '',
       date: '',
-      cotisationAmount: 0,
+      cotisationHomme: 0,
+      cotisationFemme: 0,
       description: '',
       status: 'upcoming',
     });
@@ -72,7 +74,8 @@ const EventsPage = () => {
     setFormData({
       name: event.name,
       date: new Date(event.date).toISOString().split('T')[0],
-      cotisationAmount: event.cotisationAmount,
+      cotisationHomme: event.cotisationHomme,
+      cotisationFemme: event.cotisationFemme,
       description: event.description || '',
       status: event.status,
     });
@@ -148,25 +151,39 @@ const EventsPage = () => {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
+                    <Label htmlFor="cotisationHomme">Cotisation Homme (F CFA)</Label>
                     <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      id="cotisationHomme"
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={formData.cotisationHomme}
+                      onChange={(e) => setFormData({ ...formData, cotisationHomme: parseInt(e.target.value) || 0 })}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cotisation">Cotisation (F CFA)</Label>
+                    <Label htmlFor="cotisationFemme">Cotisation Femme (F CFA)</Label>
                     <Input
-                      id="cotisation"
+                      id="cotisationFemme"
                       type="number"
                       min="0"
-                      value={formData.cotisationAmount}
-                      onChange={(e) => setFormData({ ...formData, cotisationAmount: parseInt(e.target.value) })}
+                      step="100"
+                      value={formData.cotisationFemme}
+                      onChange={(e) => setFormData({ ...formData, cotisationFemme: parseInt(e.target.value) || 0 })}
                       required
                     />
                   </div>
@@ -300,11 +317,25 @@ const EventsPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-lg gradient-primary text-primary-foreground">
-                <span className="text-sm font-medium">Cotisation</span>
-                <span className="text-lg font-bold">
-                  {event.cotisationAmount.toLocaleString()} F
-                </span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">Homme</span>
+                  </div>
+                  <span className="text-lg font-bold text-primary">
+                    {event.cotisationHomme.toLocaleString()} F
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-accent" />
+                    <span className="text-sm font-medium text-accent">Femme</span>
+                  </div>
+                  <span className="text-lg font-bold text-accent">
+                    {event.cotisationFemme.toLocaleString()} F
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>

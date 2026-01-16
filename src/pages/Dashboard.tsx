@@ -3,7 +3,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Building2, Calendar, Wallet, TrendingUp, Star } from 'lucide-react';
 
-const Dashboard = () => {
+interface DashboardProps {
+  onNavigate?: (page: string) => void;
+}
+
+const Dashboard = ({ onNavigate }: DashboardProps) => {
   const { user } = useAuth();
   const { members, commissions, events, cotisations, transactions } = useData();
 
@@ -48,6 +52,15 @@ const Dashboard = () => {
   ];
 
   const recentMembers = members.slice(-5).reverse();
+
+  // Get executive bureau members
+  const executiveBureau = members.filter(m => 
+    m.role === 'Jeuwrigne' || 
+    m.role === 'Secrétaire Général' ||
+    m.role === 'Président Commission Organisation' ||
+    m.role === 'Vice-Président Commission Organisation' ||
+    m.commissionRole === 'president'
+  );
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -122,7 +135,7 @@ const Dashboard = () => {
                         {member.firstName} {member.lastName}
                       </p>
                       <p className="text-sm text-muted-foreground truncate">
-                        {member.function}
+                        {member.role}
                       </p>
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${
@@ -174,9 +187,14 @@ const Dashboard = () => {
                           year: 'numeric'
                         })}
                       </span>
-                      <span className="font-medium text-primary">
-                        {event.cotisationAmount.toLocaleString()} F CFA
-                      </span>
+                      <div className="flex gap-2">
+                        <span className="font-medium text-primary">
+                          H: {event.cotisationHomme.toLocaleString()} F
+                        </span>
+                        <span className="font-medium text-accent">
+                          F: {event.cotisationFemme.toLocaleString()} F
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -190,7 +208,38 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Quick Stats */}
+      {/* Executive Bureau */}
+      {executiveBureau.length > 0 && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Bureau Exécutif</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {executiveBureau.map((member) => (
+                <div
+                  key={member.id}
+                  className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 text-center"
+                >
+                  <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">
+                      {member.firstName.charAt(0)}{member.lastName.charAt(0)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {member.firstName} {member.lastName}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {member.role}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Commissions Overview */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Aperçu des Commissions</CardTitle>
@@ -200,6 +249,7 @@ const Dashboard = () => {
             {commissions.map((commission) => (
               <div
                 key={commission.id}
+                onClick={() => onNavigate?.('commissions')}
                 className="p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-all hover:scale-105 text-center cursor-pointer"
               >
                 <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -209,7 +259,7 @@ const Dashboard = () => {
                   {commission.name}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {commission.memberIds.length} membres
+                  {members.filter(m => m.commissionId === commission.id).length} membres
                 </p>
               </div>
             ))}
