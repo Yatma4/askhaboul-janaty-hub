@@ -231,11 +231,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetData = () => {
-    setMembers(initialMembers);
-    setCommissions(initialCommissions);
-    setEvents(initialEvents);
-    setCotisations(initialCotisations);
-    setTransactions(initialTransactions);
+    setMembers([]);
+    setCommissions([]);
+    setEvents([]);
+    setCotisations([]);
+    setTransactions([]);
   };
 
   return (
