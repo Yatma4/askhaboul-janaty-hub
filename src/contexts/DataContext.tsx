@@ -96,12 +96,71 @@ const initialEvents: Event[] = [
   },
 ];
 
+const initialTransactions: Transaction[] = [
+  {
+    id: '1',
+    eventId: '1',
+    type: 'income',
+    category: 'Don',
+    amount: 50000,
+    description: 'Don du président',
+    date: new Date('2024-09-10'),
+  },
+  {
+    id: '2',
+    eventId: '1',
+    type: 'expense',
+    category: 'Restauration',
+    amount: 25000,
+    description: 'Achat de nourriture',
+    date: new Date('2024-09-14'),
+  },
+  {
+    id: '3',
+    eventId: '1',
+    type: 'expense',
+    category: 'Location',
+    amount: 15000,
+    description: 'Location de matériel',
+    date: new Date('2024-09-14'),
+  },
+];
+
+const initialCotisations: Cotisation[] = [
+  {
+    id: '1',
+    memberId: '1',
+    eventId: '1',
+    amount: 5000,
+    paidAmount: 5000,
+    isPaid: true,
+    paidAt: new Date('2024-09-01'),
+  },
+  {
+    id: '2',
+    memberId: '2',
+    eventId: '1',
+    amount: 3000,
+    paidAmount: 3000,
+    isPaid: true,
+    paidAt: new Date('2024-09-02'),
+  },
+  {
+    id: '3',
+    memberId: '3',
+    eventId: '1',
+    amount: 5000,
+    paidAmount: 2500,
+    isPaid: false,
+  },
+];
+
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [commissions, setCommissions] = useState<Commission[]>(initialCommissions);
   const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [cotisations, setCotisations] = useState<Cotisation[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [cotisations, setCotisations] = useState<Cotisation[]>(initialCotisations);
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
 
   const addMember = (member: Omit<Member, 'id' | 'createdAt'>) => {
     const newMember: Member = {
