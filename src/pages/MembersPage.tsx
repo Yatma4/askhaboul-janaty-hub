@@ -27,8 +27,126 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Edit, Trash2, Phone, MapPin, User } from 'lucide-react';
-import { Member, Gender } from '@/types';
+import { Plus, Search, Edit, Trash2, Phone, MapPin, User, Wallet } from 'lucide-react';
+import { Member, Gender, MemberRole, MEMBER_ROLES } from '@/types';
+
+interface CotisationDialogProps {
+  member: Member;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const CotisationDialog = ({ member, isOpen, onClose }: CotisationDialogProps) => {
+  const { events, cotisations, addCotisation, updateCotisation } = useData();
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [amount, setAmount] = useState(0);
+
+  const activeEvents = events.filter(e => e.status !== 'completed');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventId) return;
+
+    const existingCotisation = cotisations.find(
+      c => c.memberId === member.id && c.eventId === selectedEventId
+    );
+
+    if (existingCotisation) {
+      updateCotisation(existingCotisation.id, {
+        paidAmount: existingCotisation.paidAmount + amount,
+        isPaid: existingCotisation.paidAmount + amount >= existingCotisation.amount,
+        paidAt: new Date(),
+      });
+    } else {
+      const event = events.find(e => e.id === selectedEventId);
+      const cotisationAmount = member.gender === 'Homme' 
+        ? event?.cotisationHomme || 0 
+        : event?.cotisationFemme || 0;
+      
+      addCotisation({
+        memberId: member.id,
+        eventId: selectedEventId,
+        amount: cotisationAmount,
+        paidAmount: amount,
+        isPaid: amount >= cotisationAmount,
+        paidAt: new Date(),
+      });
+    }
+
+    onClose();
+    setSelectedEventId('');
+    setAmount(0);
+  };
+
+  const selectedEvent = events.find(e => e.id === selectedEventId);
+  const expectedAmount = selectedEvent 
+    ? (member.gender === 'Homme' ? selectedEvent.cotisationHomme : selectedEvent.cotisationFemme)
+    : 0;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            Cotisation - {member.firstName} {member.lastName}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="space-y-2">
+            <Label>Événement</Label>
+            <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un événement" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeEvents.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedEventId && (
+            <>
+              <div className="p-3 rounded-lg bg-secondary/30">
+                <p className="text-sm text-muted-foreground">
+                  Montant attendu ({member.gender}):
+                </p>
+                <p className="text-xl font-bold text-primary">
+                  {expectedAmount.toLocaleString()} F CFA
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">Montant payé (F CFA)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  min="0"
+                  step="100"
+                  value={amount}
+                  onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="submit" variant="gradient" disabled={!selectedEventId || amount <= 0}>
+              Enregistrer
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const MembersPage = () => {
   const { user } = useAuth();
@@ -36,6 +154,7 @@ const MembersPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [cotisationMember, setCotisationMember] = useState<Member | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -43,8 +162,7 @@ const MembersPage = () => {
     age: 18,
     phone: '',
     address: '',
-    function: '',
-    position: '',
+    role: 'Membre' as MemberRole,
     commissionId: '',
     commissionRole: '' as 'president' | 'vice-president' | 'member' | '',
   });
@@ -55,7 +173,7 @@ const MembersPage = () => {
     (member) =>
       member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.function.toLowerCase().includes(searchQuery.toLowerCase())
+      member.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const resetForm = () => {
@@ -66,8 +184,7 @@ const MembersPage = () => {
       age: 18,
       phone: '',
       address: '',
-      function: '',
-      position: '',
+      role: 'Membre',
       commissionId: '',
       commissionRole: '',
     });
@@ -103,8 +220,7 @@ const MembersPage = () => {
       age: member.age,
       phone: member.phone,
       address: member.address,
-      function: member.function,
-      position: member.position,
+      role: member.role,
       commissionId: member.commissionId || '',
       commissionRole: member.commissionRole || '',
     });
@@ -217,25 +333,23 @@ const MembersPage = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="function">Fonction</Label>
-                    <Input
-                      id="function"
-                      value={formData.function}
-                      onChange={(e) => setFormData({ ...formData, function: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="position">Poste</Label>
-                    <Input
-                      id="position"
-                      value={formData.position}
-                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Rôle dans le Dahira</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value: MemberRole) => setFormData({ ...formData, role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un rôle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEMBER_ROLES.map((role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -262,7 +376,7 @@ const MembersPage = () => {
                     <div className="space-y-2">
                       <Label htmlFor="commissionRole">Rôle dans la commission</Label>
                       <Select
-                        value={formData.commissionRole}
+                        value={formData.commissionRole || "member"}
                         onValueChange={(value: 'president' | 'vice-president' | 'member') => 
                           setFormData({ ...formData, commissionRole: value })
                         }
@@ -323,10 +437,10 @@ const MembersPage = () => {
               <TableRow className="bg-secondary/20">
                 <TableHead>Membre</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Fonction</TableHead>
+                <TableHead>Rôle</TableHead>
                 <TableHead>Commission</TableHead>
                 <TableHead>Statut</TableHead>
-                {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -361,10 +475,9 @@ const MembersPage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{member.function}</p>
-                        <p className="text-sm text-muted-foreground">{member.position}</p>
-                      </div>
+                      <span className="px-2 py-1 text-xs rounded-full bg-accent/10 text-accent">
+                        {member.role}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {member.commissionId ? (
@@ -384,32 +497,45 @@ const MembersPage = () => {
                         {member.isAdult ? 'Adulte' : 'Mineur'}
                       </span>
                     </TableCell>
-                    {isAdmin && (
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {member.isAdult && (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(member)}
+                            variant="outline"
+                            size="sm"
+                            className="text-primary border-primary hover:bg-primary/10"
+                            onClick={() => setCotisationMember(member)}
                           >
-                            <Edit className="w-4 h-4" />
+                            <Wallet className="w-4 h-4 mr-1" />
+                            Cotiser
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(member.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
+                        )}
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(member)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(member.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Aucun membre trouvé
                   </TableCell>
                 </TableRow>
@@ -418,6 +544,15 @@ const MembersPage = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Cotisation Dialog */}
+      {cotisationMember && (
+        <CotisationDialog
+          member={cotisationMember}
+          isOpen={!!cotisationMember}
+          onClose={() => setCotisationMember(null)}
+        />
+      )}
     </div>
   );
 };

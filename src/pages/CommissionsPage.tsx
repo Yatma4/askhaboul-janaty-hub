@@ -152,10 +152,10 @@ const CommissionsPage = () => {
                 <Crown className="w-8 h-8 text-primary" />
               </div>
               <h3 className="font-semibold text-foreground">Jeuwrigne du Dahira</h3>
-              {members.find(m => m.function === 'Jeuwrigne') ? (
+              {members.find(m => m.role === 'Jeuwrigne') ? (
                 <p className="text-muted-foreground mt-1">
-                  {members.find(m => m.function === 'Jeuwrigne')?.firstName}{' '}
-                  {members.find(m => m.function === 'Jeuwrigne')?.lastName}
+                  {members.find(m => m.role === 'Jeuwrigne')?.firstName}{' '}
+                  {members.find(m => m.role === 'Jeuwrigne')?.lastName}
                 </p>
               ) : (
                 <p className="text-muted-foreground mt-1">Non assigné</p>
@@ -168,10 +168,10 @@ const CommissionsPage = () => {
                 <Users className="w-8 h-8 text-accent" />
               </div>
               <h3 className="font-semibold text-foreground">Secrétaire Général</h3>
-              {members.find(m => m.function === 'Secrétaire Général') ? (
+              {members.find(m => m.role === 'Secrétaire Général') ? (
                 <p className="text-muted-foreground mt-1">
-                  {members.find(m => m.function === 'Secrétaire Général')?.firstName}{' '}
-                  {members.find(m => m.function === 'Secrétaire Général')?.lastName}
+                  {members.find(m => m.role === 'Secrétaire Général')?.firstName}{' '}
+                  {members.find(m => m.role === 'Secrétaire Général')?.lastName}
                 </p>
               ) : (
                 <p className="text-muted-foreground mt-1">Non assigné</p>
