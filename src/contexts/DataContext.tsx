@@ -19,6 +19,7 @@ interface DataContextType {
   updateCotisation: (id: string, cotisation: Partial<Cotisation>) => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   resetData: () => void;
+  archiveAndClearData: () => void;
 }
 
 const RESET_CODE = 'DAHIRA2024';
@@ -238,6 +239,35 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions([]);
   };
 
+  const archiveAndClearData = () => {
+    // Create archive object with all data
+    const archiveData = {
+      exportDate: new Date().toISOString(),
+      members,
+      commissions,
+      events,
+      cotisations,
+      transactions,
+    };
+
+    // Convert to JSON and download
+    const dataStr = JSON.stringify(archiveData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dahira-archive-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    // Clear events, cotisations, and transactions (keep members and commissions)
+    setEvents([]);
+    setCotisations([]);
+    setTransactions([]);
+  };
+
   return (
     <DataContext.Provider value={{
       members,
@@ -257,6 +287,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateCotisation,
       addTransaction,
       resetData,
+      archiveAndClearData,
     }}>
       {children}
     </DataContext.Provider>
