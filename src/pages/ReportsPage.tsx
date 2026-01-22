@@ -33,6 +33,7 @@ const COLORS = ['#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 const ReportsPage = () => {
   const { members, events, cotisations, transactions, commissions } = useData();
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
 
   const selectedEvent = events.find(e => e.id === selectedEventId);
   
@@ -241,6 +242,270 @@ const ReportsPage = () => {
     doc.save(fileName);
   };
 
+  // Get unique years from events
+  const availableYears = [...new Set(events.map(e => new Date(e.date).getFullYear()))].sort((a, b) => b - a);
+
+  const handleDownloadAnnualPDF = () => {
+    if (!selectedYear) return;
+
+    const yearEvents = events.filter(e => new Date(e.date).getFullYear() === parseInt(selectedYear));
+    
+    if (yearEvents.length === 0) {
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DAHIRA DAARA ASKHABOUL JANATY', pageWidth / 2, 18, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.text(`Rapport Annuel ${selectedYear}`, pageWidth / 2, 32, { align: 'center' });
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    
+    // Annual summary
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date du rapport: ${new Date().toLocaleDateString('fr-FR')}`, 14, 55);
+    doc.text(`Nombre d'événements: ${yearEvents.length}`, 14, 62);
+    
+    // Calculate annual totals
+    let annualCotisations = 0;
+    let annualIncome = 0;
+    let annualExpenses = 0;
+
+    const eventSummaries = yearEvents.map(event => {
+      const evtCotisations = cotisations.filter(c => c.eventId === event.id);
+      const evtTransactions = transactions.filter(t => t.eventId === event.id);
+      
+      const cotTotal = evtCotisations.reduce((sum, c) => sum + c.paidAmount, 0);
+      const incTotal = evtTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const expTotal = evtTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      
+      annualCotisations += cotTotal;
+      annualIncome += incTotal;
+      annualExpenses += expTotal;
+
+      return {
+        name: event.name,
+        date: new Date(event.date).toLocaleDateString('fr-FR'),
+        cotisations: cotTotal,
+        income: incTotal,
+        expenses: expTotal,
+        balance: cotTotal + incTotal - expTotal,
+      };
+    });
+
+    // Annual Financial Summary
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Résumé Financier Annuel', 14, 78);
+    
+    autoTable(doc, {
+      startY: 84,
+      head: [['Description', 'Montant (F CFA)']],
+      body: [
+        ['Total Cotisations collectées', `${annualCotisations.toLocaleString()} F`],
+        ['Total Autres recettes', `${annualIncome.toLocaleString()} F`],
+        ['Total des entrées', `${(annualCotisations + annualIncome).toLocaleString()} F`],
+        ['Total des dépenses', `${annualExpenses.toLocaleString()} F`],
+        ['Solde annuel', `${(annualCotisations + annualIncome - annualExpenses).toLocaleString()} F`],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 11 },
+    });
+
+    // Events Summary Table
+    let yPos = (doc as any).lastAutoTable.finalY + 15;
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Détail par Événement', 14, yPos);
+    
+    autoTable(doc, {
+      startY: yPos + 6,
+      head: [['Événement', 'Date', 'Cotisations', 'Recettes', 'Dépenses', 'Solde']],
+      body: eventSummaries.map(es => [
+        es.name,
+        es.date,
+        `${es.cotisations.toLocaleString()} F`,
+        `${es.income.toLocaleString()} F`,
+        `${es.expenses.toLocaleString()} F`,
+        `${es.balance.toLocaleString()} F`,
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 9 },
+    });
+
+    // Member Statistics
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+    
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Statistiques des Membres', 14, yPos);
+    
+    const adultMembersCount = members.filter(m => m.isAdult).length;
+    const maleCount = members.filter(m => m.gender === 'Homme').length;
+    const femaleCount = members.filter(m => m.gender === 'Femme').length;
+    
+    autoTable(doc, {
+      startY: yPos + 6,
+      head: [['Indicateur', 'Valeur']],
+      body: [
+        ['Nombre total de membres', String(members.length)],
+        ['Membres adultes', String(adultMembersCount)],
+        ['Hommes', String(maleCount)],
+        ['Femmes', String(femaleCount)],
+        ['Nombre de commissions', String(commissions.length)],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 10 },
+    });
+
+    // Detailed event reports
+    yearEvents.forEach((event, index) => {
+      doc.addPage();
+      
+      // Event Header
+      doc.setFillColor(14, 165, 233);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${event.name}`, pageWidth / 2, 16, { align: 'center' });
+      
+      doc.setTextColor(0, 0, 0);
+      
+      const eventDate = new Date(event.date).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Date: ${eventDate}`, 14, 38);
+      doc.text(`Cotisation Homme: ${event.cotisationHomme.toLocaleString()} F CFA`, 14, 45);
+      doc.text(`Cotisation Femme: ${event.cotisationFemme.toLocaleString()} F CFA`, 14, 52);
+      
+      const evtCotisations = cotisations.filter(c => c.eventId === event.id);
+      const evtTransactions = transactions.filter(t => t.eventId === event.id);
+      
+      const cotTotal = evtCotisations.reduce((sum, c) => sum + c.paidAmount, 0);
+      const incTotal = evtTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      const expTotal = evtTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      
+      // Event Financial Summary
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Résumé Financier', 14, 65);
+      
+      autoTable(doc, {
+        startY: 70,
+        head: [['Description', 'Montant (F CFA)']],
+        body: [
+          ['Cotisations collectées', `${cotTotal.toLocaleString()} F`],
+          ['Autres recettes', `${incTotal.toLocaleString()} F`],
+          ['Dépenses', `${expTotal.toLocaleString()} F`],
+          ['Solde', `${(cotTotal + incTotal - expTotal).toLocaleString()} F`],
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [14, 165, 233] },
+        styles: { fontSize: 10 },
+      });
+      
+      // Cotisations Details
+      let evtYPos = (doc as any).lastAutoTable.finalY + 10;
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Détail des Cotisations', 14, evtYPos);
+      
+      const cotisationDetails = evtCotisations.map(cot => {
+        const member = members.find(m => m.id === cot.memberId);
+        return [
+          member ? `${member.firstName} ${member.lastName}` : 'Inconnu',
+          member?.gender || '-',
+          `${cot.amount.toLocaleString()} F`,
+          `${cot.paidAmount.toLocaleString()} F`,
+          cot.isPaid ? 'Payé' : 'En attente',
+        ];
+      });
+      
+      autoTable(doc, {
+        startY: evtYPos + 5,
+        head: [['Membre', 'Genre', 'Montant dû', 'Payé', 'Statut']],
+        body: cotisationDetails.length > 0 ? cotisationDetails : [['Aucune cotisation', '', '', '', '']],
+        theme: 'striped',
+        headStyles: { fillColor: [14, 165, 233] },
+        styles: { fontSize: 9 },
+      });
+      
+      // Transactions
+      evtYPos = (doc as any).lastAutoTable.finalY + 10;
+      
+      if (evtYPos > 250) {
+        doc.addPage();
+        evtYPos = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Transactions', 14, evtYPos);
+      
+      const transactionDetails = evtTransactions.map(t => [
+        new Date(t.date).toLocaleDateString('fr-FR'),
+        t.type === 'income' ? 'Recette' : 'Dépense',
+        t.category,
+        t.description,
+        `${t.amount.toLocaleString()} F`,
+      ]);
+      
+      autoTable(doc, {
+        startY: evtYPos + 5,
+        head: [['Date', 'Type', 'Catégorie', 'Description', 'Montant']],
+        body: transactionDetails.length > 0 ? transactionDetails : [['Aucune transaction', '', '', '', '']],
+        theme: 'striped',
+        headStyles: { fillColor: [14, 165, 233] },
+        styles: { fontSize: 9 },
+      });
+    });
+
+    // Footer on all pages
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      doc.text(
+        `Page ${i} sur ${pageCount} - Rapport Annuel ${selectedYear} - Généré le ${new Date().toLocaleDateString('fr-FR')}`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' }
+      );
+    }
+    
+    doc.save(`rapport-annuel-${selectedYear}.pdf`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -385,6 +650,59 @@ const ReportsPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Annual Report */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            Rapport Annuel (PDF)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground text-sm">
+            Générez un rapport complet pour tous les événements d'une année
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une année" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedYear && (
+              <Button variant="gradient" onClick={handleDownloadAnnualPDF}>
+                <Download className="w-4 h-4 mr-2" />
+                Télécharger Rapport Annuel
+              </Button>
+            )}
+          </div>
+          {selectedYear && (
+            <div className="p-4 rounded-xl bg-secondary/30">
+              <p className="text-sm font-medium">
+                {events.filter(e => new Date(e.date).getFullYear() === parseInt(selectedYear)).length} événement(s) en {selectedYear}
+              </p>
+              <ul className="mt-2 space-y-1">
+                {events
+                  .filter(e => new Date(e.date).getFullYear() === parseInt(selectedYear))
+                  .map(e => (
+                    <li key={e.id} className="text-sm text-muted-foreground">
+                      • {e.name} - {new Date(e.date).toLocaleDateString('fr-FR')}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Event Report */}
       <Card className="border-0 shadow-lg">

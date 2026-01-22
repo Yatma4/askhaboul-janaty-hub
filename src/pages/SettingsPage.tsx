@@ -54,10 +54,13 @@ interface AppUser {
 }
 
 const SettingsPage = () => {
-  const { user } = useAuth();
+  const { user, updateUserCredentials, addUser, deleteUser, getUsers } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
   
   const [dahiraInfo, setDahiraInfo] = useState({
     name: 'Dahira Daara Askhaboul Janaty',
@@ -86,10 +89,11 @@ const SettingsPage = () => {
     weeklyReports: true,
   });
 
-  const [appUsers, setAppUsers] = useState<AppUser[]>([
-    { id: '1', username: 'admin', role: 'admin', email: 'admin@dahira.sn', createdAt: new Date() },
-    { id: '2', username: 'user', role: 'user', email: 'user@dahira.sn', createdAt: new Date() },
-  ]);
+  const appUsers = getUsers().map(u => ({
+    ...u,
+    email: u.username + '@dahira.sn',
+    createdAt: new Date(),
+  }));
 
   const [newUser, setNewUser] = useState({
     username: '',
@@ -124,26 +128,37 @@ const SettingsPage = () => {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
-    const newAppUser: AppUser = {
-      id: Date.now().toString(),
-      username: newUser.username,
-      role: newUser.role,
-      email: newUser.email,
-      createdAt: new Date(),
-    };
-    setAppUsers(prev => [...prev, newAppUser]);
+    addUser(newUser.username, newUser.password, newUser.role);
     setNewUser({ username: '', email: '', password: '', role: 'user' });
     setShowAddUserDialog(false);
     toast.success(`Utilisateur "${newUser.username}" créé avec succès`);
   };
 
   const handleDeleteUser = (userId: string) => {
-    if (userId === '1') {
+    const success = deleteUser(userId);
+    if (!success) {
       toast.error('Impossible de supprimer le compte administrateur principal');
       return;
     }
-    setAppUsers(prev => prev.filter(u => u.id !== userId));
     toast.success('Utilisateur supprimé');
+  };
+
+  const handleEditUser = (userId: string, currentUsername: string) => {
+    setEditingUserId(userId);
+    setEditUsername(currentUsername);
+    setEditPassword('');
+  };
+
+  const handleSaveUserCredentials = () => {
+    if (!editingUserId || !editUsername.trim() || !editPassword.trim()) {
+      toast.error('Veuillez remplir le nom d\'utilisateur et le mot de passe');
+      return;
+    }
+    updateUserCredentials(editingUserId, editUsername, editPassword);
+    setEditingUserId(null);
+    setEditUsername('');
+    setEditPassword('');
+    toast.success('Identifiants mis à jour avec succès');
   };
 
   const renderContent = () => {
@@ -540,16 +555,37 @@ const SettingsPage = () => {
                     {appUsers.map((appUser) => (
                       <TableRow key={appUser.id}>
                         <TableCell className="font-medium">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                              <span className="text-sm font-semibold text-primary">
-                                {appUser.username.charAt(0).toUpperCase()}
-                              </span>
+                          {editingUserId === appUser.id ? (
+                            <Input
+                              value={editUsername}
+                              onChange={(e) => setEditUsername(e.target.value)}
+                              placeholder="Nom d'utilisateur"
+                              className="h-8"
+                            />
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-sm font-semibold text-primary">
+                                  {appUser.username.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              {appUser.username}
                             </div>
-                            {appUser.username}
-                          </div>
+                          )}
                         </TableCell>
-                        <TableCell>{appUser.email || '-'}</TableCell>
+                        <TableCell>
+                          {editingUserId === appUser.id ? (
+                            <Input
+                              type="password"
+                              value={editPassword}
+                              onChange={(e) => setEditPassword(e.target.value)}
+                              placeholder="Nouveau mot de passe"
+                              className="h-8"
+                            />
+                          ) : (
+                            appUser.email || '-'
+                          )}
+                        </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             appUser.role === 'admin' 
@@ -564,18 +600,49 @@ const SettingsPage = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteUser(appUser.id)}
-                              disabled={appUser.id === '1'}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {editingUserId === appUser.id ? (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={handleSaveUserCredentials}
+                                >
+                                  <Save className="w-4 h-4 mr-1" />
+                                  Sauver
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingUserId(null);
+                                    setEditUsername('');
+                                    setEditPassword('');
+                                  }}
+                                >
+                                  Annuler
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditUser(appUser.id, appUser.username)}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteUser(appUser.id)}
+                                  disabled={appUser.id === '1'}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
