@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogOut, RotateCcw } from 'lucide-react';
+import { LogOut, RotateCcw, Archive } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Dashboard from '@/pages/Dashboard';
 import MembersPage from '@/pages/MembersPage';
@@ -25,13 +25,16 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 const RESET_CODE = 'DAHIRA2024';
+const ARCHIVE_CODE = 'ARCHIVE2024';
 
 const DashboardLayout = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [inputCode, setInputCode] = useState('');
+  const [archiveCode, setArchiveCode] = useState('');
   const { user, logout } = useAuth();
-  const { resetData } = useData();
+  const { members, commissions, events, cotisations, transactions, resetData, archiveAndClearData } = useData();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -75,6 +78,70 @@ const DashboardLayout = () => {
                 Bonjour, <span className="font-medium text-foreground">{user?.username}</span>
               </span>
               
+              {/* Archive Dialog */}
+              <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Archive className="w-4 h-4" />
+                    Archiver
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Archiver les données</DialogTitle>
+                    <DialogDescription>
+                      Cette action va sauvegarder toutes les données dans un fichier JSON, puis supprimer les événements, cotisations et transactions. Les membres et commissions seront conservés.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="archive-code">Code de confirmation</Label>
+                      <Input
+                        id="archive-code"
+                        type="text"
+                        placeholder="Entrez le code..."
+                        value={archiveCode}
+                        onChange={(e) => setArchiveCode(e.target.value.toUpperCase())}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Indice : Le code est <strong>ARCHIVE2024</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setArchiveDialogOpen(false);
+                        setArchiveCode('');
+                      }}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        if (archiveCode === ARCHIVE_CODE) {
+                          archiveAndClearData();
+                          toast.success('Données archivées et nettoyées avec succès !');
+                          setArchiveDialogOpen(false);
+                          setArchiveCode('');
+                        } else {
+                          toast.error('Code incorrect. Veuillez réessayer.');
+                        }
+                      }}
+                    >
+                      Archiver
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Reset Dialog */}
               <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
