@@ -178,9 +178,11 @@ const MembersPage = () => {
         member.role.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
-      const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
-      const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
-      return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+      const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+      return sortOrder === 'asc' 
+        ? nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' }) 
+        : nameB.localeCompare(nameA, 'fr', { sensitivity: 'base' });
     });
 
   const resetForm = () => {
