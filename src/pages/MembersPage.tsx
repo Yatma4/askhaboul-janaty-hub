@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, Edit, Trash2, Phone, MapPin, User, Wallet } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Phone, MapPin, User, Wallet, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
 import { Member, Gender, MemberRole, MEMBER_ROLES } from '@/types';
 
 interface CotisationDialogProps {
@@ -155,6 +155,7 @@ const MembersPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [cotisationMember, setCotisationMember] = useState<Member | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -169,12 +170,18 @@ const MembersPage = () => {
 
   const isAdmin = user?.role === 'admin';
 
-  const filteredMembers = members.filter(
-    (member) =>
-      member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredMembers = members
+    .filter(
+      (member) =>
+        member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.role.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
+      const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+      return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    });
 
   const resetForm = () => {
     setFormData({
@@ -411,17 +418,37 @@ const MembersPage = () => {
         )}
       </div>
 
-      {/* Search */}
+      {/* Search and Sort */}
       <Card className="border-0 shadow-lg">
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un membre..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un membre..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-12"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="h-12 px-4"
+            >
+              {sortOrder === 'asc' ? (
+                <>
+                  <ArrowUpAZ className="w-5 h-5 mr-2" />
+                  A → Z
+                </>
+              ) : (
+                <>
+                  <ArrowDownZA className="w-5 h-5 mr-2" />
+                  Z → A
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>
