@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,8 @@ import {
   Edit2,
   Eye,
   EyeOff,
-  Save
+  Save,
+  Lock
 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -55,6 +57,7 @@ interface AppUser {
 
 const SettingsPage = () => {
   const { user, updateUserCredentials, addUser, deleteUser, getUsers } = useAuth();
+  const { securityCodes, updateSecurityCodes } = useData();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -79,6 +82,11 @@ const SettingsPage = () => {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+  });
+
+  const [codeSettings, setCodeSettings] = useState({
+    archiveCode: securityCodes.archiveCode,
+    resetCode: securityCodes.resetCode,
   });
 
   const [notifications, setNotifications] = useState({
@@ -121,6 +129,18 @@ const SettingsPage = () => {
     }
     toast.success('Mot de passe modifié avec succès');
     setSecuritySettings({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  };
+
+  const handleSaveSecurityCodes = () => {
+    if (codeSettings.archiveCode.length < 4 || codeSettings.resetCode.length < 4) {
+      toast.error('Les codes doivent contenir au moins 4 caractères');
+      return;
+    }
+    updateSecurityCodes({
+      archiveCode: codeSettings.archiveCode,
+      resetCode: codeSettings.resetCode,
+    });
+    toast.success('Codes de sécurité mis à jour avec succès');
   };
 
   const handleAddUser = () => {
@@ -352,6 +372,54 @@ const SettingsPage = () => {
                   <Button variant="gradient" onClick={handleChangePassword}>
                     <Shield className="w-4 h-4 mr-2" />
                     Changer le mot de passe
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5" />
+                  Codes de sécurité
+                </CardTitle>
+                <CardDescription>
+                  Modifiez les codes d'accès pour l'archivage et la réinitialisation des données
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="archiveCode">Code d'archivage</Label>
+                    <Input
+                      id="archiveCode"
+                      type="text"
+                      value={codeSettings.archiveCode}
+                      onChange={(e) => setCodeSettings({ ...codeSettings, archiveCode: e.target.value.toUpperCase() })}
+                      placeholder="Code pour archiver"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Utilisé pour confirmer l'archivage des données
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="resetCode">Code de réinitialisation</Label>
+                    <Input
+                      id="resetCode"
+                      type="text"
+                      value={codeSettings.resetCode}
+                      onChange={(e) => setCodeSettings({ ...codeSettings, resetCode: e.target.value.toUpperCase() })}
+                      placeholder="Code pour réinitialiser"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Utilisé pour confirmer la réinitialisation complète
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-border">
+                  <Button variant="gradient" onClick={handleSaveSecurityCodes}>
+                    <Save className="w-4 h-4 mr-2" />
+                    Enregistrer les codes
                   </Button>
                 </div>
               </CardContent>
