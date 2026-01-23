@@ -24,9 +24,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-const RESET_CODE = 'DAHIRA2024';
-const ARCHIVE_CODE = 'ARCHIVE2024';
-
 const DashboardLayout = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -34,7 +31,7 @@ const DashboardLayout = () => {
   const [inputCode, setInputCode] = useState('');
   const [archiveCode, setArchiveCode] = useState('');
   const { user, logout } = useAuth();
-  const { members, commissions, events, cotisations, transactions, resetData, archiveAndClearData } = useData();
+  const { members, commissions, events, cotisations, transactions, resetData, archiveAndClearData, securityCodes } = useData();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -108,7 +105,7 @@ const DashboardLayout = () => {
                         onChange={(e) => setArchiveCode(e.target.value.toUpperCase())}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Indice : Le code est <strong>ARCHIVE2024</strong>
+                        Entrez le code de sécurité pour archiver les données
                       </p>
                     </div>
                   </div>
@@ -125,7 +122,7 @@ const DashboardLayout = () => {
                     <Button
                       variant="default"
                       onClick={() => {
-                        if (archiveCode === ARCHIVE_CODE) {
+                        if (archiveCode === securityCodes.archiveCode) {
                           archiveAndClearData();
                           toast.success('Données archivées et nettoyées avec succès !');
                           setArchiveDialogOpen(false);
@@ -172,7 +169,7 @@ const DashboardLayout = () => {
                         onChange={(e) => setInputCode(e.target.value.toUpperCase())}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Indice : Le code est <strong>DAHIRA2024</strong>
+                        Entrez le code de sécurité pour réinitialiser les données
                       </p>
                     </div>
                   </div>
@@ -189,7 +186,7 @@ const DashboardLayout = () => {
                     <Button
                       variant="destructive"
                       onClick={() => {
-                        if (inputCode === RESET_CODE) {
+                        if (inputCode === securityCodes.resetCode) {
                           resetData();
                           toast.success('Données réinitialisées avec succès !');
                           setResetDialogOpen(false);

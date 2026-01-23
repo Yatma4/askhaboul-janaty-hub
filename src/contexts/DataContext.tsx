@@ -1,5 +1,19 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Member, Commission, Event, Cotisation, Transaction } from '@/types';
+
+export interface ReportHistory {
+  id: string;
+  type: 'event' | 'annual';
+  name: string;
+  date: string;
+  eventId?: string;
+  year?: string;
+}
+
+interface SecurityCodes {
+  archiveCode: string;
+  resetCode: string;
+}
 
 interface DataContextType {
   members: Member[];
@@ -7,6 +21,8 @@ interface DataContextType {
   events: Event[];
   cotisations: Cotisation[];
   transactions: Transaction[];
+  reportHistory: ReportHistory[];
+  securityCodes: SecurityCodes;
   addMember: (member: Omit<Member, 'id' | 'createdAt'>) => void;
   updateMember: (id: string, member: Partial<Member>) => void;
   deleteMember: (id: string) => void;
@@ -20,9 +36,17 @@ interface DataContextType {
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   resetData: () => void;
   archiveAndClearData: () => void;
+  addReportToHistory: (report: Omit<ReportHistory, 'id' | 'date'>) => void;
+  updateSecurityCodes: (codes: Partial<SecurityCodes>) => void;
 }
 
-const RESET_CODE = 'DAHIRA2024';
+const SECURITY_CODES_KEY = 'dahira_security_codes';
+const REPORT_HISTORY_KEY = 'dahira_report_history';
+
+const DEFAULT_SECURITY_CODES: SecurityCodes = {
+  archiveCode: 'ARCHIVE2024',
+  resetCode: 'DAHIRA2024',
+};
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
@@ -165,6 +189,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [events, setEvents] = useState<Event[]>(initialEvents);
   const [cotisations, setCotisations] = useState<Cotisation[]>(initialCotisations);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  
+  const [reportHistory, setReportHistory] = useState<ReportHistory[]>(() => {
+    const saved = localStorage.getItem(REPORT_HISTORY_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [securityCodes, setSecurityCodes] = useState<SecurityCodes>(() => {
+    const saved = localStorage.getItem(SECURITY_CODES_KEY);
+    return saved ? JSON.parse(saved) : DEFAULT_SECURITY_CODES;
+  });
+
+  // Persist report history
+  useEffect(() => {
+    localStorage.setItem(REPORT_HISTORY_KEY, JSON.stringify(reportHistory));
+  }, [reportHistory]);
+
+  // Persist security codes
+  useEffect(() => {
+    localStorage.setItem(SECURITY_CODES_KEY, JSON.stringify(securityCodes));
+  }, [securityCodes]);
 
   const addMember = (member: Omit<Member, 'id' | 'createdAt'>) => {
     const newMember: Member = {
@@ -268,6 +312,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions([]);
   };
 
+  const addReportToHistory = (report: Omit<ReportHistory, 'id' | 'date'>) => {
+    const newReport: ReportHistory = {
+      ...report,
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+    };
+    setReportHistory(prev => [newReport, ...prev]);
+  };
+
+  const updateSecurityCodes = (codes: Partial<SecurityCodes>) => {
+    setSecurityCodes(prev => ({ ...prev, ...codes }));
+  };
+
   return (
     <DataContext.Provider value={{
       members,
@@ -275,6 +332,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       events,
       cotisations,
       transactions,
+      reportHistory,
+      securityCodes,
       addMember,
       updateMember,
       deleteMember,
@@ -288,6 +347,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addTransaction,
       resetData,
       archiveAndClearData,
+      addReportToHistory,
+      updateSecurityCodes,
     }}>
       {children}
     </DataContext.Provider>

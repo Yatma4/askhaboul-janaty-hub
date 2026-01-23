@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileText, Download, Users, Wallet, Calendar, TrendingUp } from 'lucide-react';
+import { FileText, Download, Users, Wallet, Calendar, TrendingUp, History } from 'lucide-react';
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -31,7 +31,7 @@ import {
 const COLORS = ['#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 const ReportsPage = () => {
-  const { members, events, cotisations, transactions, commissions } = useData();
+  const { members, events, cotisations, transactions, commissions, reportHistory, addReportToHistory } = useData();
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
 
@@ -114,8 +114,8 @@ const ReportsPage = () => {
     });
     doc.text(`Date de l'événement: ${eventDate}`, 14, 55);
     doc.text(`Date du rapport: ${new Date().toLocaleDateString('fr-FR')}`, 14, 62);
-    doc.text(`Cotisation Homme: ${selectedEvent.cotisationHomme} F CFA`, 14, 69);
-    doc.text(`Cotisation Femme: ${selectedEvent.cotisationFemme} F CFA`, 14, 76);
+    doc.text(`Cotisation Homme: ${Math.floor(selectedEvent.cotisationHomme)} F CFA`, 14, 69);
+    doc.text(`Cotisation Femme: ${Math.floor(selectedEvent.cotisationFemme)} F CFA`, 14, 76);
     
     // Financial Summary
     doc.setFontSize(14);
@@ -126,11 +126,11 @@ const ReportsPage = () => {
       startY: 98,
       head: [['Description', 'Montant (F CFA)']],
       body: [
-        ['Cotisations collectées', `${totalCotisations} F`],
-        ['Autres recettes', `${totalIncome} F`],
-        ['Total des entrées', `${totalCotisations + totalIncome} F`],
-        ['Total des dépenses', `${totalExpenses} F`],
-        ['Solde final', `${totalCotisations + totalIncome - totalExpenses} F`],
+        ['Cotisations collectées', `${Math.floor(totalCotisations)} F`],
+        ['Autres recettes', `${Math.floor(totalIncome)} F`],
+        ['Total des entrées', `${Math.floor(totalCotisations + totalIncome)} F`],
+        ['Total des dépenses', `${Math.floor(totalExpenses)} F`],
+        ['Solde final', `${Math.floor(totalCotisations + totalIncome - totalExpenses)} F`],
       ],
       theme: 'striped',
       headStyles: { fillColor: [14, 165, 233] },
@@ -149,8 +149,8 @@ const ReportsPage = () => {
       return [
         member ? `${member.firstName} ${member.lastName}` : 'Inconnu',
         member?.gender || '-',
-        `${cot.amount} F`,
-        `${cot.paidAmount} F`,
+        `${Math.floor(cot.amount)} F`,
+        `${Math.floor(cot.paidAmount)} F`,
         cot.isPaid ? 'Payé' : 'En attente',
       ];
     });
@@ -211,7 +211,7 @@ const ReportsPage = () => {
       t.type === 'income' ? 'Recette' : 'Dépense',
       t.category,
       t.description,
-      `${t.amount} F`,
+      `${Math.floor(t.amount)} F`,
     ]);
     
     autoTable(doc, {
@@ -240,6 +240,13 @@ const ReportsPage = () => {
     // Save the PDF
     const fileName = `rapport-${selectedEvent.name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+    
+    // Add to history
+    addReportToHistory({
+      type: 'event',
+      name: `Rapport - ${selectedEvent.name}`,
+      eventId: selectedEvent.id,
+    });
   };
 
   // Get unique years from events
@@ -314,11 +321,11 @@ const ReportsPage = () => {
       startY: 84,
       head: [['Description', 'Montant (F CFA)']],
       body: [
-        ['Total Cotisations collectées', `${annualCotisations.toLocaleString()} F`],
-        ['Total Autres recettes', `${annualIncome.toLocaleString()} F`],
-        ['Total des entrées', `${(annualCotisations + annualIncome).toLocaleString()} F`],
-        ['Total des dépenses', `${annualExpenses.toLocaleString()} F`],
-        ['Solde annuel', `${(annualCotisations + annualIncome - annualExpenses).toLocaleString()} F`],
+        ['Total Cotisations collectées', `${Math.floor(annualCotisations)} F`],
+        ['Total Autres recettes', `${Math.floor(annualIncome)} F`],
+        ['Total des entrées', `${Math.floor(annualCotisations + annualIncome)} F`],
+        ['Total des dépenses', `${Math.floor(annualExpenses)} F`],
+        ['Solde annuel', `${Math.floor(annualCotisations + annualIncome - annualExpenses)} F`],
       ],
       theme: 'striped',
       headStyles: { fillColor: [14, 165, 233] },
@@ -338,10 +345,10 @@ const ReportsPage = () => {
       body: eventSummaries.map(es => [
         es.name,
         es.date,
-        `${es.cotisations.toLocaleString()} F`,
-        `${es.income.toLocaleString()} F`,
-        `${es.expenses.toLocaleString()} F`,
-        `${es.balance.toLocaleString()} F`,
+        `${Math.floor(es.cotisations)} F`,
+        `${Math.floor(es.income)} F`,
+        `${Math.floor(es.expenses)} F`,
+        `${Math.floor(es.balance)} F`,
       ]),
       theme: 'striped',
       headStyles: { fillColor: [14, 165, 233] },
@@ -403,8 +410,8 @@ const ReportsPage = () => {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.text(`Date: ${eventDate}`, 14, 38);
-      doc.text(`Cotisation Homme: ${event.cotisationHomme.toLocaleString()} F CFA`, 14, 45);
-      doc.text(`Cotisation Femme: ${event.cotisationFemme.toLocaleString()} F CFA`, 14, 52);
+      doc.text(`Cotisation Homme: ${Math.floor(event.cotisationHomme)} F CFA`, 14, 45);
+      doc.text(`Cotisation Femme: ${Math.floor(event.cotisationFemme)} F CFA`, 14, 52);
       
       const evtCotisations = cotisations.filter(c => c.eventId === event.id);
       const evtTransactions = transactions.filter(t => t.eventId === event.id);
@@ -422,10 +429,10 @@ const ReportsPage = () => {
         startY: 70,
         head: [['Description', 'Montant (F CFA)']],
         body: [
-          ['Cotisations collectées', `${cotTotal.toLocaleString()} F`],
-          ['Autres recettes', `${incTotal.toLocaleString()} F`],
-          ['Dépenses', `${expTotal.toLocaleString()} F`],
-          ['Solde', `${(cotTotal + incTotal - expTotal).toLocaleString()} F`],
+          ['Cotisations collectées', `${Math.floor(cotTotal)} F`],
+          ['Autres recettes', `${Math.floor(incTotal)} F`],
+          ['Dépenses', `${Math.floor(expTotal)} F`],
+          ['Solde', `${Math.floor(cotTotal + incTotal - expTotal)} F`],
         ],
         theme: 'striped',
         headStyles: { fillColor: [14, 165, 233] },
@@ -444,8 +451,8 @@ const ReportsPage = () => {
         return [
           member ? `${member.firstName} ${member.lastName}` : 'Inconnu',
           member?.gender || '-',
-          `${cot.amount.toLocaleString()} F`,
-          `${cot.paidAmount.toLocaleString()} F`,
+          `${Math.floor(cot.amount)} F`,
+          `${Math.floor(cot.paidAmount)} F`,
           cot.isPaid ? 'Payé' : 'En attente',
         ];
       });
@@ -476,7 +483,7 @@ const ReportsPage = () => {
         t.type === 'income' ? 'Recette' : 'Dépense',
         t.category,
         t.description,
-        `${t.amount.toLocaleString()} F`,
+        `${Math.floor(t.amount)} F`,
       ]);
       
       autoTable(doc, {
@@ -504,6 +511,13 @@ const ReportsPage = () => {
     }
     
     doc.save(`rapport-annuel-${selectedYear}.pdf`);
+    
+    // Add to history
+    addReportToHistory({
+      type: 'annual',
+      name: `Rapport Annuel ${selectedYear}`,
+      year: selectedYear,
+    });
   };
 
   return (
@@ -651,6 +665,58 @@ const ReportsPage = () => {
         </Card>
       </div>
 
+      {/* Report History */}
+      {reportHistory.length > 0 && (
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              Historique des Rapports Générés
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {reportHistory.slice(0, 20).map((report) => (
+                <div 
+                  key={report.id} 
+                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/30"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      report.type === 'annual' ? 'bg-primary/10' : 'bg-accent/10'
+                    }`}>
+                      {report.type === 'annual' ? (
+                        <Calendar className="w-5 h-5 text-primary" />
+                      ) : (
+                        <FileText className="w-5 h-5 text-accent" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{report.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(report.date).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    report.type === 'annual' 
+                      ? 'bg-primary/10 text-primary' 
+                      : 'bg-accent/10 text-accent'
+                  }`}>
+                    {report.type === 'annual' ? 'Annuel' : 'Événement'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Annual Report */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
