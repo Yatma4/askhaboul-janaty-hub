@@ -35,7 +35,8 @@ import {
   TrendingDown, 
   ArrowUpRight, 
   ArrowDownRight,
-  Users
+  Users,
+  Search
 } from 'lucide-react';
 
 const FinancePage = () => {
@@ -64,10 +65,41 @@ const FinancePage = () => {
     eventId: '',
     paidAmount: 0,
   });
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
   const isAdmin = user?.role === 'admin';
 
   const adultMembers = members.filter(m => m.isAdult);
+  
+  // Filter members by search query
+  const filteredAdultMembers = adultMembers.filter(m => 
+    `${m.firstName} ${m.lastName}`.toLowerCase().includes(memberSearchQuery.toLowerCase())
+  );
+  
+  // Get members who can still contribute to the selected event
+  const getEligibleMembers = () => {
+    if (!cotisationForm.eventId) return filteredAdultMembers;
+    
+    const event = events.find(e => e.id === cotisationForm.eventId);
+    if (!event) return filteredAdultMembers;
+    
+    return filteredAdultMembers.filter(member => {
+      const existingCotisation = cotisations.find(
+        c => c.memberId === member.id && c.eventId === cotisationForm.eventId
+      );
+      
+      if (!existingCotisation) return true;
+      
+      const expectedAmount = member.gender === 'Homme' 
+        ? event.cotisationHomme 
+        : event.cotisationFemme;
+      
+      // Only include members who haven't fully paid
+      return existingCotisation.paidAmount < expectedAmount;
+    });
+  };
+  
+  const eligibleMembers = getEligibleMembers();
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
   const totalCotisations = cotisations.reduce((sum, c) => sum + c.paidAmount, 0);
@@ -95,21 +127,43 @@ const FinancePage = () => {
     if (!event || !member) return;
 
     const cotisationAmount = member.gender === 'Homme' ? event.cotisationHomme : event.cotisationFemme;
-
-    addCotisation({
-      memberId: cotisationForm.memberId,
-      eventId: cotisationForm.eventId,
-      amount: cotisationAmount,
-      paidAmount: cotisationForm.paidAmount,
-      isPaid: cotisationForm.paidAmount >= cotisationAmount,
-      paidAt: cotisationForm.paidAmount > 0 ? new Date() : undefined,
-    });
+    
+    // Check if there's an existing cotisation to update
+    const existingCotisation = cotisations.find(
+      c => c.memberId === cotisationForm.memberId && c.eventId === cotisationForm.eventId
+    );
+    
+    if (existingCotisation) {
+      // Cap the amount to not exceed the expected amount
+      const remainingAmount = cotisationAmount - existingCotisation.paidAmount;
+      const cappedAmount = Math.min(cotisationForm.paidAmount, remainingAmount);
+      
+      updateCotisation(existingCotisation.id, {
+        paidAmount: existingCotisation.paidAmount + cappedAmount,
+        isPaid: existingCotisation.paidAmount + cappedAmount >= cotisationAmount,
+        paidAt: new Date(),
+      });
+    } else {
+      // Cap the amount to not exceed the expected amount
+      const cappedAmount = Math.min(cotisationForm.paidAmount, cotisationAmount);
+      
+      addCotisation({
+        memberId: cotisationForm.memberId,
+        eventId: cotisationForm.eventId,
+        amount: cotisationAmount,
+        paidAmount: cappedAmount,
+        isPaid: cappedAmount >= cotisationAmount,
+        paidAt: cappedAmount > 0 ? new Date() : undefined,
+      });
+    }
+    
     setIsCotisationDialogOpen(false);
     setCotisationForm({
       memberId: '',
       eventId: '',
       paidAmount: 0,
     });
+    setMemberSearchQuery('');
   };
 
   const expenseCategories = [
@@ -175,6 +229,15 @@ const FinancePage = () => {
 
                   <div className="space-y-2">
                     <Label>Membre (adulte)</Label>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Rechercher un membre..."
+                        value={memberSearchQuery}
+                        onChange={(e) => setMemberSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
                     <Select
                       value={cotisationForm.memberId}
                       onValueChange={(value) => setCotisationForm({ ...cotisationForm, memberId: value })}
@@ -183,14 +246,56 @@ const FinancePage = () => {
                         <SelectValue placeholder="Sélectionner un membre" />
                       </SelectTrigger>
                       <SelectContent>
-                        {adultMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
-                            {member.firstName} {member.lastName}
-                          </SelectItem>
-                        ))}
+                        {eligibleMembers.length > 0 ? (
+                          eligibleMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id}>
+                              {member.firstName} {member.lastName} ({member.gender})
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            {cotisationForm.eventId 
+                              ? "Aucun membre éligible trouvé" 
+                              : "Sélectionnez d'abord un événement"}
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {cotisationForm.memberId && cotisationForm.eventId && (() => {
+                    const selectedMember = members.find(m => m.id === cotisationForm.memberId);
+                    const selectedEvent = events.find(e => e.id === cotisationForm.eventId);
+                    if (!selectedMember || !selectedEvent) return null;
+                    
+                    const expectedAmount = selectedMember.gender === 'Homme' 
+                      ? selectedEvent.cotisationHomme 
+                      : selectedEvent.cotisationFemme;
+                    const existingCot = cotisations.find(
+                      c => c.memberId === cotisationForm.memberId && c.eventId === cotisationForm.eventId
+                    );
+                    const alreadyPaid = existingCot?.paidAmount || 0;
+                    const remainingAmount = expectedAmount - alreadyPaid;
+                    
+                    return (
+                      <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Montant attendu:</span>
+                          <span className="font-bold text-primary">{expectedAmount.toLocaleString()} F</span>
+                        </div>
+                        {alreadyPaid > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Déjà payé:</span>
+                            <span className="font-medium text-success">{alreadyPaid.toLocaleString()} F</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="text-sm text-muted-foreground">Reste à payer:</span>
+                          <span className="font-bold text-warning">{remainingAmount.toLocaleString()} F</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="space-y-2">
                     <Label>Montant payé (F CFA)</Label>
@@ -198,15 +303,18 @@ const FinancePage = () => {
                       type="number"
                       min="0"
                       value={cotisationForm.paidAmount}
-                      onChange={(e) => setCotisationForm({ ...cotisationForm, paidAmount: parseInt(e.target.value) })}
+                      onChange={(e) => setCotisationForm({ ...cotisationForm, paidAmount: parseInt(e.target.value) || 0 })}
                     />
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsCotisationDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => {
+                      setIsCotisationDialogOpen(false);
+                      setMemberSearchQuery('');
+                    }}>
                       Annuler
                     </Button>
-                    <Button type="submit" variant="gradient">
+                    <Button type="submit" variant="gradient" disabled={!cotisationForm.memberId || !cotisationForm.eventId || cotisationForm.paidAmount <= 0}>
                       Enregistrer
                     </Button>
                   </div>

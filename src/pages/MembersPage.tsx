@@ -41,7 +41,22 @@ const CotisationDialog = ({ member, isOpen, onClose }: CotisationDialogProps) =>
   const [selectedEventId, setSelectedEventId] = useState('');
   const [amount, setAmount] = useState(0);
 
-  const activeEvents = events.filter(e => e.status !== 'completed');
+  // Filter active events and exclude those where member has already fully paid
+  const activeEvents = events.filter(e => {
+    if (e.status === 'completed') return false;
+    
+    const existingCotisation = cotisations.find(
+      c => c.memberId === member.id && c.eventId === e.id
+    );
+    
+    if (existingCotisation) {
+      const expectedAmount = member.gender === 'Homme' ? e.cotisationHomme : e.cotisationFemme;
+      // Exclude event if member has already paid full amount
+      return existingCotisation.paidAmount < expectedAmount;
+    }
+    
+    return true;
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,24 +66,31 @@ const CotisationDialog = ({ member, isOpen, onClose }: CotisationDialogProps) =>
       c => c.memberId === member.id && c.eventId === selectedEventId
     );
 
+    const event = events.find(e => e.id === selectedEventId);
+    const expectedAmount = member.gender === 'Homme' 
+      ? event?.cotisationHomme || 0 
+      : event?.cotisationFemme || 0;
+
     if (existingCotisation) {
+      // Cap the amount to not exceed the expected amount
+      const remainingAmount = expectedAmount - existingCotisation.paidAmount;
+      const cappedAmount = Math.min(amount, remainingAmount);
+      
       updateCotisation(existingCotisation.id, {
-        paidAmount: existingCotisation.paidAmount + amount,
-        isPaid: existingCotisation.paidAmount + amount >= existingCotisation.amount,
+        paidAmount: existingCotisation.paidAmount + cappedAmount,
+        isPaid: existingCotisation.paidAmount + cappedAmount >= expectedAmount,
         paidAt: new Date(),
       });
     } else {
-      const event = events.find(e => e.id === selectedEventId);
-      const cotisationAmount = member.gender === 'Homme' 
-        ? event?.cotisationHomme || 0 
-        : event?.cotisationFemme || 0;
+      // Cap the amount to not exceed the expected amount
+      const cappedAmount = Math.min(amount, expectedAmount);
       
       addCotisation({
         memberId: member.id,
         eventId: selectedEventId,
-        amount: cotisationAmount,
-        paidAmount: amount,
-        isPaid: amount >= cotisationAmount,
+        amount: expectedAmount,
+        paidAmount: cappedAmount,
+        isPaid: cappedAmount >= expectedAmount,
         paidAt: new Date(),
       });
     }
@@ -82,6 +104,14 @@ const CotisationDialog = ({ member, isOpen, onClose }: CotisationDialogProps) =>
   const expectedAmount = selectedEvent 
     ? (member.gender === 'Homme' ? selectedEvent.cotisationHomme : selectedEvent.cotisationFemme)
     : 0;
+  
+  // Calculate remaining amount for the selected event
+  const existingCotisation = selectedEventId 
+    ? cotisations.find(c => c.memberId === member.id && c.eventId === selectedEventId)
+    : null;
+  const remainingAmount = existingCotisation 
+    ? expectedAmount - existingCotisation.paidAmount 
+    : expectedAmount;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -110,13 +140,21 @@ const CotisationDialog = ({ member, isOpen, onClose }: CotisationDialogProps) =>
 
           {selectedEventId && (
             <>
-              <div className="p-3 rounded-lg bg-secondary/30">
-                <p className="text-sm text-muted-foreground">
-                  Montant attendu ({member.gender}):
-                </p>
-                <p className="text-xl font-bold text-primary">
-                  {expectedAmount.toLocaleString()} F CFA
-                </p>
+              <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Montant attendu ({member.gender}):</span>
+                  <span className="font-bold text-primary">{expectedAmount.toLocaleString()} F</span>
+                </div>
+                {existingCotisation && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Déjà payé:</span>
+                    <span className="font-medium text-success">{existingCotisation.paidAmount.toLocaleString()} F</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm text-muted-foreground">Reste à payer:</span>
+                  <span className="font-bold text-warning">{remainingAmount.toLocaleString()} F</span>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -125,20 +163,30 @@ const CotisationDialog = ({ member, isOpen, onClose }: CotisationDialogProps) =>
                   id="amount"
                   type="number"
                   min="0"
+                  max={remainingAmount}
                   step="100"
                   value={amount}
-                  onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setAmount(Math.min(parseInt(e.target.value) || 0, remainingAmount))}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Maximum: {remainingAmount.toLocaleString()} F CFA
+                </p>
               </div>
             </>
+          )}
+
+          {activeEvents.length === 0 && (
+            <div className="p-4 text-center text-muted-foreground bg-secondary/20 rounded-lg">
+              Ce membre a déjà payé toutes ses cotisations pour les événements actifs.
+            </div>
           )}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit" variant="gradient" disabled={!selectedEventId || amount <= 0}>
+            <Button type="submit" variant="gradient" disabled={!selectedEventId || amount <= 0 || activeEvents.length === 0}>
               Enregistrer
             </Button>
           </div>
