@@ -1,37 +1,37 @@
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Star, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LoginPage = () => {
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     if (!username.trim() || !password.trim()) {
-      setError('Veuillez remplir tous les champs');
+      setError("Veuillez remplir tous les champs");
       setIsLoading(false);
       return;
     }
 
     const success = await login(username, password);
-    
+
     if (!success) {
-      setError('Identifiants incorrects');
+      setError("Identifiants incorrects");
     }
-    
+
     setIsLoading(false);
   };
 
@@ -56,9 +56,7 @@ const LoginPage = () => {
         <Card className="shadow-xl border-0 bg-card/80 backdrop-blur-sm">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-xl">Connexion</CardTitle>
-            <CardDescription>
-              Accédez à votre espace de gestion
-            </CardDescription>
+            <CardDescription>Accédez à votre espace de gestion</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -87,7 +85,7 @@ const LoginPage = () => {
                 <div className="relative">
                   <Input
                     id="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Entrez votre mot de passe"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -104,14 +102,8 @@ const LoginPage = () => {
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                variant="gradient"
-                size="lg"
-                className="w-full mt-6"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Connexion...' : 'Se connecter'}
+              <Button type="submit" variant="gradient" size="lg" className="w-full mt-6" disabled={isLoading}>
+                {isLoading ? "Connexion..." : "Se connecter"}
               </Button>
             </form>
 
@@ -119,16 +111,14 @@ const LoginPage = () => {
             <div className="mt-6 p-4 rounded-lg bg-secondary/50 border border-border">
               <p className="text-xs font-medium text-muted-foreground mb-2">Comptes de démonstration :</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p><span className="font-medium">Admin:</span> admin / admin123</p>
-                <p><span className="font-medium">Utilisateur:</span> user / user123</p>
+                {/* <p><span className="font-medium">Admin:</span> admin / admin123</p>
+                <p><span className="font-medium">Utilisateur:</span> user / user123</p> */}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          © 2024 Dahira Daara Askhaboul Janaty
-        </p>
+        <p className="text-center text-sm text-muted-foreground mt-6">© 2026 Dahira Daara Askhaboul Janaty</p>
       </div>
     </div>
   );
