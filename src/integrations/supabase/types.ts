@@ -14,7 +14,282 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      commissions: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          member_ids: string[] | null
+          name: string
+          president_id: string | null
+          updated_at: string
+          vice_president_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          member_ids?: string[] | null
+          name: string
+          president_id?: string | null
+          updated_at?: string
+          vice_president_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          member_ids?: string[] | null
+          name?: string
+          president_id?: string | null
+          updated_at?: string
+          vice_president_id?: string | null
+        }
+        Relationships: []
+      }
+      cotisations: {
+        Row: {
+          amount: number
+          created_at: string
+          event_id: string
+          id: string
+          is_paid: boolean
+          member_id: string
+          paid_amount: number
+          paid_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_id: string
+          id?: string
+          is_paid?: boolean
+          member_id: string
+          paid_amount?: number
+          paid_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_paid?: boolean
+          member_id?: string
+          paid_amount?: number
+          paid_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotisations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotisations_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          cotisation_femme: number
+          cotisation_homme: number
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cotisation_femme: number
+          cotisation_homme: number
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cotisation_femme?: number
+          cotisation_homme?: number
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      members: {
+        Row: {
+          address: string
+          age: number
+          commission_id: string | null
+          commission_role: string | null
+          created_at: string
+          first_name: string
+          gender: string
+          id: string
+          is_adult: boolean
+          last_name: string
+          phone: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          age: number
+          commission_id?: string | null
+          commission_role?: string | null
+          created_at?: string
+          first_name: string
+          gender: string
+          id?: string
+          is_adult?: boolean
+          last_name: string
+          phone: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          age?: number
+          commission_id?: string | null
+          commission_role?: string | null
+          created_at?: string
+          first_name?: string
+          gender?: string
+          id?: string
+          is_adult?: boolean
+          last_name?: string
+          phone?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_commission_id_fkey"
+            columns: ["commission_id"]
+            isOneToOne: false
+            referencedRelation: "commissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_history: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          name: string
+          type: string
+          year: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          name: string
+          type: string
+          year?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          name?: string
+          type?: string
+          year?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_history_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_codes: {
+        Row: {
+          archive_code: string
+          id: string
+          reset_code: string
+          updated_at: string
+        }
+        Insert: {
+          archive_code?: string
+          id?: string
+          reset_code?: string
+          updated_at?: string
+        }
+        Update: {
+          archive_code?: string
+          id?: string
+          reset_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string
+          event_id: string
+          id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          date: string
+          description: string
+          event_id: string
+          id?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          event_id?: string
+          id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

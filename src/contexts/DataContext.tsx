@@ -1,5 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Member, Commission, Event, Cotisation, Transaction } from '@/types';
+ import React, { createContext, useContext } from 'react';
+ import { Member, Commission, Event, Cotisation, Transaction } from '@/types';
+ import { useQueryClient } from '@tanstack/react-query';
+ import { supabase } from '@/integrations/supabase/client';
+ import { useMembers, useAddMember, useUpdateMember, useDeleteMember } from '@/hooks/useMembers';
+ import { useCommissions, useAddCommission, useUpdateCommission, useDeleteCommission } from '@/hooks/useCommissions';
+ import { useEvents, useAddEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents';
+ import { useCotisations, useAddCotisation, useUpdateCotisation } from '@/hooks/useCotisations';
+ import { useTransactions, useAddTransaction } from '@/hooks/useTransactions';
+ import { useReportHistory, useAddReportHistory } from '@/hooks/useReportHistory';
+ import { useSecurityCodes, useUpdateSecurityCodes } from '@/hooks/useSecurityCodes';
 
 export interface ReportHistory {
   id: string;
@@ -23,6 +32,7 @@ interface DataContextType {
   transactions: Transaction[];
   reportHistory: ReportHistory[];
   securityCodes: SecurityCodes;
+   isLoading: boolean;
   addMember: (member: Omit<Member, 'id' | 'createdAt'>) => void;
   updateMember: (id: string, member: Partial<Member>) => void;
   deleteMember: (id: string) => void;
@@ -40,9 +50,6 @@ interface DataContextType {
   updateSecurityCodes: (codes: Partial<SecurityCodes>) => void;
 }
 
-const SECURITY_CODES_KEY = 'dahira_security_codes';
-const REPORT_HISTORY_KEY = 'dahira_report_history';
-
 const DEFAULT_SECURITY_CODES: SecurityCodes = {
   archiveCode: 'ARCHIVE2024',
   resetCode: 'DAHIRA2024',
@@ -50,243 +57,98 @@ const DEFAULT_SECURITY_CODES: SecurityCodes = {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// Initial demo data
-const initialCommissions: Commission[] = [
-  { id: '1', name: 'Organisation', description: 'Supervise toutes les commissions', memberIds: [] },
-  { id: '2', name: 'Hygiène', description: 'Propreté et hygiène', memberIds: [] },
-  { id: '3', name: 'Collation', description: 'Gestion des collations', memberIds: [] },
-  { id: '4', name: 'Café', description: 'Service café', memberIds: [] },
-  { id: '5', name: 'Cuisine', description: 'Préparation des repas', memberIds: [] },
-  { id: '6', name: 'Multimédia', description: 'Gestion audiovisuelle', memberIds: [] },
-  { id: '7', name: 'Culturel', description: 'Activités culturelles', memberIds: [] },
-  { id: '8', name: 'Finance', description: 'Gestion financière', memberIds: [] },
-];
-
-const initialMembers: Member[] = [
-  {
-    id: '1',
-    firstName: 'Amadou',
-    lastName: 'Diallo',
-    gender: 'Homme',
-    age: 45,
-    phone: '+221 77 123 45 67',
-    address: 'Dakar, Sénégal',
-    role: 'Jeuwrigne',
-    isAdult: true,
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    firstName: 'Fatou',
-    lastName: 'Ndiaye',
-    gender: 'Femme',
-    age: 38,
-    phone: '+221 76 234 56 78',
-    address: 'Thiès, Sénégal',
-    role: 'Secrétaire Général',
-    isAdult: true,
-    createdAt: new Date(),
-  },
-  {
-    id: '3',
-    firstName: 'Moussa',
-    lastName: 'Sow',
-    gender: 'Homme',
-    age: 42,
-    phone: '+221 78 345 67 89',
-    address: 'Saint-Louis, Sénégal',
-    role: 'Président Commission Organisation',
-    commissionId: '1',
-    commissionRole: 'president',
-    isAdult: true,
-    createdAt: new Date(),
-  },
-];
-
-const initialEvents: Event[] = [
-  {
-    id: '1',
-    name: 'Magal de Touba 2024',
-    date: new Date('2024-09-15'),
-    cotisationHomme: 5000,
-    cotisationFemme: 3000,
-    description: 'Célébration annuelle du Magal',
-    status: 'upcoming',
-  },
-  {
-    id: '2',
-    name: 'Gamou 2024',
-    date: new Date('2024-10-20'),
-    cotisationHomme: 3000,
-    cotisationFemme: 2000,
-    description: 'Célébration du Gamou',
-    status: 'upcoming',
-  },
-];
-
-const initialTransactions: Transaction[] = [
-  {
-    id: '1',
-    eventId: '1',
-    type: 'income',
-    category: 'Don',
-    amount: 50000,
-    description: 'Don du président',
-    date: new Date('2024-09-10'),
-  },
-  {
-    id: '2',
-    eventId: '1',
-    type: 'expense',
-    category: 'Restauration',
-    amount: 25000,
-    description: 'Achat de nourriture',
-    date: new Date('2024-09-14'),
-  },
-  {
-    id: '3',
-    eventId: '1',
-    type: 'expense',
-    category: 'Location',
-    amount: 15000,
-    description: 'Location de matériel',
-    date: new Date('2024-09-14'),
-  },
-];
-
-const initialCotisations: Cotisation[] = [
-  {
-    id: '1',
-    memberId: '1',
-    eventId: '1',
-    amount: 5000,
-    paidAmount: 5000,
-    isPaid: true,
-    paidAt: new Date('2024-09-01'),
-  },
-  {
-    id: '2',
-    memberId: '2',
-    eventId: '1',
-    amount: 3000,
-    paidAmount: 3000,
-    isPaid: true,
-    paidAt: new Date('2024-09-02'),
-  },
-  {
-    id: '3',
-    memberId: '3',
-    eventId: '1',
-    amount: 5000,
-    paidAmount: 2500,
-    isPaid: false,
-  },
-];
-
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [members, setMembers] = useState<Member[]>(initialMembers);
-  const [commissions, setCommissions] = useState<Commission[]>(initialCommissions);
-  const [events, setEvents] = useState<Event[]>(initialEvents);
-  const [cotisations, setCotisations] = useState<Cotisation[]>(initialCotisations);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  
-  const [reportHistory, setReportHistory] = useState<ReportHistory[]>(() => {
-    const saved = localStorage.getItem(REPORT_HISTORY_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [securityCodes, setSecurityCodes] = useState<SecurityCodes>(() => {
-    const saved = localStorage.getItem(SECURITY_CODES_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_SECURITY_CODES;
-  });
-
-  // Persist report history
-  useEffect(() => {
-    localStorage.setItem(REPORT_HISTORY_KEY, JSON.stringify(reportHistory));
-  }, [reportHistory]);
-
-  // Persist security codes
-  useEffect(() => {
-    localStorage.setItem(SECURITY_CODES_KEY, JSON.stringify(securityCodes));
-  }, [securityCodes]);
-
-  const addMember = (member: Omit<Member, 'id' | 'createdAt'>) => {
-    const newMember: Member = {
-      ...member,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-    setMembers(prev => [...prev, newMember]);
-  };
-
-  const updateMember = (id: string, updates: Partial<Member>) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-  };
-
-  const deleteMember = (id: string) => {
-    setMembers(prev => prev.filter(m => m.id !== id));
-  };
-
-  const addCommission = (commission: Omit<Commission, 'id'>) => {
-    const newCommission: Commission = {
-      ...commission,
-      id: Date.now().toString(),
-    };
-    setCommissions(prev => [...prev, newCommission]);
-  };
-
-  const updateCommission = (id: string, updates: Partial<Commission>) => {
-    setCommissions(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  };
-
-  const deleteCommission = (id: string) => {
-    setCommissions(prev => prev.filter(c => c.id !== id));
-  };
-
-  const addEvent = (event: Omit<Event, 'id'>) => {
-    const newEvent: Event = {
-      ...event,
-      id: Date.now().toString(),
-    };
-    setEvents(prev => [...prev, newEvent]);
-  };
-
-  const updateEvent = (id: string, updates: Partial<Event>) => {
-    setEvents(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-  };
-
-  const addCotisation = (cotisation: Omit<Cotisation, 'id'>) => {
-    const newCotisation: Cotisation = {
-      ...cotisation,
-      id: Date.now().toString(),
-    };
-    setCotisations(prev => [...prev, newCotisation]);
-  };
-
-  const updateCotisation = (id: string, updates: Partial<Cotisation>) => {
-    setCotisations(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  };
-
-  const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: Date.now().toString(),
-    };
-    setTransactions(prev => [...prev, newTransaction]);
-  };
-
-  const resetData = () => {
-    setMembers([]);
-    setCommissions([]);
-    setEvents([]);
-    setCotisations([]);
-    setTransactions([]);
-  };
-
-  const archiveAndClearData = () => {
-    // Create archive object with all data
-    const archiveData = {
-      exportDate: new Date().toISOString(),
+   const queryClient = useQueryClient();
+   
+   // Fetch data using hooks
+   const { data: members = [], isLoading: membersLoading } = useMembers();
+   const { data: commissions = [], isLoading: commissionsLoading } = useCommissions();
+   const { data: events = [], isLoading: eventsLoading } = useEvents();
+   const { data: cotisations = [], isLoading: cotisationsLoading } = useCotisations();
+   const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+   const { data: reportHistory = [], isLoading: reportHistoryLoading } = useReportHistory();
+   const { data: securityCodes = DEFAULT_SECURITY_CODES, isLoading: securityCodesLoading } = useSecurityCodes();
+   
+   // Mutations
+   const addMemberMutation = useAddMember();
+   const updateMemberMutation = useUpdateMember();
+   const deleteMemberMutation = useDeleteMember();
+   const addCommissionMutation = useAddCommission();
+   const updateCommissionMutation = useUpdateCommission();
+   const deleteCommissionMutation = useDeleteCommission();
+   const addEventMutation = useAddEvent();
+   const updateEventMutation = useUpdateEvent();
+   const deleteEventMutation = useDeleteEvent();
+   const addCotisationMutation = useAddCotisation();
+   const updateCotisationMutation = useUpdateCotisation();
+   const addTransactionMutation = useAddTransaction();
+   const addReportHistoryMutation = useAddReportHistory();
+   const updateSecurityCodesMutation = useUpdateSecurityCodes();
+   
+   const isLoading = membersLoading || commissionsLoading || eventsLoading || 
+                     cotisationsLoading || transactionsLoading || reportHistoryLoading || securityCodesLoading;
+ 
+   const addMember = (member: Omit<Member, 'id' | 'createdAt'>) => {
+     addMemberMutation.mutate(member);
+   };
+ 
+   const updateMember = (id: string, updates: Partial<Member>) => {
+     updateMemberMutation.mutate({ id, updates });
+   };
+ 
+   const deleteMember = (id: string) => {
+     deleteMemberMutation.mutate(id);
+   };
+ 
+   const addCommission = (commission: Omit<Commission, 'id'>) => {
+     addCommissionMutation.mutate(commission);
+   };
+ 
+   const updateCommission = (id: string, updates: Partial<Commission>) => {
+     updateCommissionMutation.mutate({ id, updates });
+   };
+ 
+   const deleteCommission = (id: string) => {
+     deleteCommissionMutation.mutate(id);
+   };
+ 
+   const addEvent = (event: Omit<Event, 'id'>) => {
+     addEventMutation.mutate(event);
+   };
+ 
+   const updateEvent = (id: string, updates: Partial<Event>) => {
+     updateEventMutation.mutate({ id, updates });
+   };
+ 
+   const addCotisation = (cotisation: Omit<Cotisation, 'id'>) => {
+     addCotisationMutation.mutate(cotisation);
+   };
+ 
+   const updateCotisation = (id: string, updates: Partial<Cotisation>) => {
+     updateCotisationMutation.mutate({ id, updates });
+   };
+ 
+   const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
+     addTransactionMutation.mutate(transaction);
+   };
+ 
+   const resetData = async () => {
+     // Delete all data from database
+     await supabase.from('cotisations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('members').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('commissions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('report_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     
+     // Invalidate all queries to refresh data
+     queryClient.invalidateQueries();
+   };
+ 
+   const archiveAndClearData = async () => {
+     // Create archive object with all current data
+     const archiveData = {
+       exportDate: new Date().toISOString(),
       members,
       commissions,
       events,
@@ -306,23 +168,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    // Clear events, cotisations, and transactions (keep members and commissions)
-    setEvents([]);
-    setCotisations([]);
-    setTransactions([]);
+     // Clear events, cotisations, and transactions from database (keep members and commissions)
+     await supabase.from('cotisations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('events').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     await supabase.from('report_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+     
+     // Invalidate queries to refresh data
+     queryClient.invalidateQueries({ queryKey: ['events'] });
+     queryClient.invalidateQueries({ queryKey: ['cotisations'] });
+     queryClient.invalidateQueries({ queryKey: ['transactions'] });
+     queryClient.invalidateQueries({ queryKey: ['reportHistory'] });
   };
 
   const addReportToHistory = (report: Omit<ReportHistory, 'id' | 'date'>) => {
-    const newReport: ReportHistory = {
-      ...report,
-      id: Date.now().toString(),
-      date: new Date().toISOString(),
-    };
-    setReportHistory(prev => [newReport, ...prev]);
+     addReportHistoryMutation.mutate(report);
   };
 
-  const updateSecurityCodes = (codes: Partial<SecurityCodes>) => {
-    setSecurityCodes(prev => ({ ...prev, ...codes }));
+   const handleUpdateSecurityCodes = (codes: Partial<SecurityCodes>) => {
+     updateSecurityCodesMutation.mutate(codes);
   };
 
   return (
@@ -334,6 +198,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       transactions,
       reportHistory,
       securityCodes,
+       isLoading,
       addMember,
       updateMember,
       deleteMember,
@@ -348,7 +213,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetData,
       archiveAndClearData,
       addReportToHistory,
-      updateSecurityCodes,
+       updateSecurityCodes: handleUpdateSecurityCodes,
     }}>
       {children}
     </DataContext.Provider>
