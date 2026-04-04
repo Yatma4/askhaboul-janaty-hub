@@ -111,8 +111,8 @@ const LoginPage = () => {
             <div className="mt-6 p-4 rounded-lg bg-secondary/50 border border-border">
               <p className="text-xs font-medium text-muted-foreground mb-2">Comptes de démonstration :</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                {/* <p><span className="font-medium">Admin:</span> admin / admin123</p>
-                <p><span className="font-medium">Utilisateur:</span> user / user123</p> */}
+                <p><span className="font-medium">Admin:</span> admin / admin123</p>
+                <p><span className="font-medium">Utilisateur:</span> user / user123</p>
               </div>
             </div>
           </CardContent>
