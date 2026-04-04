@@ -1,7 +1,6 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
  import { Cotisation } from '@/types';
- import { useRealtimeSync } from './useRealtimeSync';
 
  const COTISATIONS_KEY = ['cotisations'];
  
