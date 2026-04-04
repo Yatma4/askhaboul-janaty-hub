@@ -87,7 +87,7 @@ const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
         <Button
           variant="ghost"
           className="w-full justify-start text-muted-foreground hover:text-destructive"
-          onClick={logout}
+          onClick={() => logout()}
         >
           <LogOut className="w-4 h-4 mr-2" />
           Déconnexion

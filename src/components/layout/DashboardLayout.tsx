@@ -205,7 +205,7 @@ const DashboardLayout = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={logout}
+                onClick={() => logout()}
                 className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 <LogOut className="w-4 h-4" />
