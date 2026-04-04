@@ -25,7 +25,6 @@
  });
  
  export const useCotisations = () => {
-   useRealtimeSync('cotisations', COTISATIONS_KEY);
    return useQuery({
      queryKey: COTISATIONS_KEY,
      queryFn: async () => {

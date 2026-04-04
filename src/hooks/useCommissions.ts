@@ -23,7 +23,6 @@
  });
  
  export const useCommissions = () => {
-   useRealtimeSync('commissions', COMMISSIONS_KEY);
    return useQuery({
      queryKey: COMMISSIONS_KEY,
      queryFn: async () => {

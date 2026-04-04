@@ -60,6 +60,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
    const queryClient = useQueryClient();
+   useRealtimeSync();
    
    // Fetch data using hooks
    const { data: members = [], isLoading: membersLoading } = useMembers();

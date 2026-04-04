@@ -25,7 +25,6 @@
  });
  
  export const useTransactions = () => {
-   useRealtimeSync('transactions', TRANSACTIONS_KEY);
    return useQuery({
      queryKey: TRANSACTIONS_KEY,
      queryFn: async () => {

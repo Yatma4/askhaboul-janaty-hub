@@ -25,7 +25,6 @@
  });
  
  export const useEvents = () => {
-   useRealtimeSync('events', EVENTS_KEY);
    return useQuery({
      queryKey: EVENTS_KEY,
      queryFn: async () => {

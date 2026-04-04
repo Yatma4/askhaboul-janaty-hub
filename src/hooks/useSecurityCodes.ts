@@ -15,7 +15,6 @@
  }
  
  export const useSecurityCodes = () => {
-   useRealtimeSync('security_codes', SECURITY_CODES_KEY);
    return useQuery({
      queryKey: SECURITY_CODES_KEY,
      queryFn: async () => {

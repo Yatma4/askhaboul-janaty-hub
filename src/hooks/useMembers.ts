@@ -35,7 +35,6 @@
  });
  
  export const useMembers = () => {
-   useRealtimeSync('members', MEMBERS_KEY);
    return useQuery({
      queryKey: MEMBERS_KEY,
      queryFn: async () => {

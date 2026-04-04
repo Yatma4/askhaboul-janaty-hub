@@ -23,7 +23,6 @@
  });
  
  export const useReportHistory = () => {
-   useRealtimeSync('report_history', REPORT_HISTORY_KEY);
    return useQuery({
      queryKey: REPORT_HISTORY_KEY,
      queryFn: async () => {
