@@ -1,6 +1,9 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
  import { Event } from '@/types';
+ import { useRealtimeSync } from './useRealtimeSync';
+
+ const EVENTS_KEY = ['events'];
  
  interface DbEvent {
    id: string;
@@ -23,8 +26,9 @@
  });
  
  export const useEvents = () => {
+   useRealtimeSync('events', EVENTS_KEY);
    return useQuery({
-     queryKey: ['events'],
+     queryKey: EVENTS_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('events')

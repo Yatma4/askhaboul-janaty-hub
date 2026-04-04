@@ -1,6 +1,9 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
  import { Cotisation } from '@/types';
+ import { useRealtimeSync } from './useRealtimeSync';
+
+ const COTISATIONS_KEY = ['cotisations'];
  
  interface DbCotisation {
    id: string;
@@ -23,8 +26,9 @@
  });
  
  export const useCotisations = () => {
+   useRealtimeSync('cotisations', COTISATIONS_KEY);
    return useQuery({
-     queryKey: ['cotisations'],
+     queryKey: COTISATIONS_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('cotisations')
