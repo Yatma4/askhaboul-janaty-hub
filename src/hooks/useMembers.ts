@@ -36,8 +36,9 @@
  });
  
  export const useMembers = () => {
+   useRealtimeSync('members', MEMBERS_KEY);
    return useQuery({
-     queryKey: ['members'],
+     queryKey: MEMBERS_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('members')

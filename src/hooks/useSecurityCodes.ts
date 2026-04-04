@@ -16,8 +16,9 @@
  }
  
  export const useSecurityCodes = () => {
+   useRealtimeSync('security_codes', SECURITY_CODES_KEY);
    return useQuery({
-     queryKey: ['securityCodes'],
+     queryKey: SECURITY_CODES_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('security_codes')

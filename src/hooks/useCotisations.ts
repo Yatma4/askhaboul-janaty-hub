@@ -26,8 +26,9 @@
  });
  
  export const useCotisations = () => {
+   useRealtimeSync('cotisations', COTISATIONS_KEY);
    return useQuery({
-     queryKey: ['cotisations'],
+     queryKey: COTISATIONS_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('cotisations')

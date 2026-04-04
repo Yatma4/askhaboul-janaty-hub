@@ -24,8 +24,9 @@
  });
  
  export const useReportHistory = () => {
+   useRealtimeSync('report_history', REPORT_HISTORY_KEY);
    return useQuery({
-     queryKey: ['reportHistory'],
+     queryKey: REPORT_HISTORY_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('report_history')

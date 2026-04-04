@@ -26,8 +26,9 @@
  });
  
  export const useTransactions = () => {
+   useRealtimeSync('transactions', TRANSACTIONS_KEY);
    return useQuery({
-     queryKey: ['transactions'],
+     queryKey: TRANSACTIONS_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('transactions')

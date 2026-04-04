@@ -26,8 +26,9 @@
  });
  
  export const useEvents = () => {
+   useRealtimeSync('events', EVENTS_KEY);
    return useQuery({
-     queryKey: ['events'],
+     queryKey: EVENTS_KEY,
      queryFn: async () => {
        const { data, error } = await supabase
          .from('events')
