@@ -28,6 +28,8 @@ const DEFAULT_USERS: AppUser[] = [
 ];
 
 const USERS_STORAGE_KEY = 'dahira_users';
+const USERS_VERSION_KEY = 'dahira_users_version';
+const CURRENT_VERSION = '2';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
