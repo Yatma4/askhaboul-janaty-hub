@@ -1,125 +1,149 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { User, UserRole } from '@/types';
-
-interface AppUser {
-  id: string;
-  username: string;
-  password: string;
-  role: UserRole;
-}
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  updateUserCredentials: (userId: string, username: string, password: string) => void;
-  addUser: (username: string, password: string, role: UserRole) => void;
-  deleteUser: (userId: string) => boolean;
-  getUsers: () => Omit<AppUser, 'password'>[];
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<boolean>;
+  createUser: (email: string, password: string, username: string, role: UserRole) => Promise<boolean>;
+  deleteUser: (userId: string) => Promise<boolean>;
+  listUsers: () => Promise<{ id: string; email: string; username: string; role: UserRole; created_at: string }[]>;
+  updateUserPassword: (userId: string, password: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Default demo users
-const DEFAULT_USERS: AppUser[] = [
-  { id: '1', username: 'admin', password: 'admin123', role: 'admin' },
-  { id: '2', username: 'user', password: 'user123', role: 'user' },
-];
+const mapSupabaseUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+  // Fetch role from user_roles table
+  const { data: roleData } = await supabase
+    .from('user_roles' as any)
+    .select('role')
+    .eq('user_id', supabaseUser.id)
+    .single();
 
-const USERS_STORAGE_KEY = 'dahira_users';
-const USERS_VERSION_KEY = 'dahira_users_version';
-const CURRENT_VERSION = '2';
+  // Fetch username from profiles table
+  const { data: profileData } = await supabase
+    .from('profiles' as any)
+    .select('username')
+    .eq('user_id', supabaseUser.id)
+    .single();
+
+  return {
+    id: supabaseUser.id,
+    username: (profileData as any)?.username || supabaseUser.user_metadata?.username || supabaseUser.email || 'Utilisateur',
+    role: ((roleData as any)?.role as UserRole) || 'user',
+  };
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('dahira_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [users, setUsers] = useState<AppUser[]>(() => {
-    const savedVersion = localStorage.getItem(USERS_VERSION_KEY);
-    if (savedVersion !== CURRENT_VERSION) {
-      localStorage.removeItem(USERS_STORAGE_KEY);
-      localStorage.setItem(USERS_VERSION_KEY, CURRENT_VERSION);
-      return DEFAULT_USERS;
-    }
-    const saved = localStorage.getItem(USERS_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : DEFAULT_USERS;
-  });
-
-  // Persist users to localStorage
   useEffect(() => {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  }, [users]);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Use setTimeout to avoid potential deadlock with Supabase client
+        setTimeout(async () => {
+          const mappedUser = await mapSupabaseUser(session.user);
+          setUser(mappedUser);
+          setIsLoading(false);
+        }, 0);
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
+    });
 
-  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    const foundUser = users.find(
-      u => u.username === username && u.password === password
-    );
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const mappedUser = await mapSupabaseUser(session.user);
+        setUser(mappedUser);
+      }
+      setIsLoading(false);
+    });
 
-    if (foundUser) {
-      const userData: User = {
-        id: foundUser.id,
-        username: foundUser.username,
-        role: foundUser.role,
-      };
-      setUser(userData);
-      localStorage.setItem('dahira_user', JSON.stringify(userData));
-      return true;
-    }
-    return false;
-  }, [users]);
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const logout = useCallback(() => {
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
+  }, []);
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('dahira_user');
   }, []);
 
-  const updateUserCredentials = useCallback((userId: string, username: string, password: string) => {
-    setUsers(prev => prev.map(u => 
-      u.id === userId ? { ...u, username, password } : u
-    ));
-    
-    // Update current user session if it's the same user
-    if (user && user.id === userId) {
-      const updatedUser = { ...user, username };
-      setUser(updatedUser);
-      localStorage.setItem('dahira_user', JSON.stringify(updatedUser));
-    }
-  }, [user]);
-
-  const addUser = useCallback((username: string, password: string, role: UserRole) => {
-    const newUser: AppUser = {
-      id: Date.now().toString(),
-      username,
-      password,
-      role,
-    };
-    setUsers(prev => [...prev, newUser]);
+  const changePassword = useCallback(async (newPassword: string): Promise<boolean> => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return !error;
   }, []);
 
-  const deleteUser = useCallback((userId: string): boolean => {
-    // Cannot delete the main admin
-    if (userId === '1') return false;
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    return true;
+  const createUser = useCallback(async (email: string, password: string, username: string, role: UserRole): Promise<boolean> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      body: { action: 'create', email, password, username, role },
+    });
+
+    return !error && !data?.error;
   }, []);
 
-  const getUsers = useCallback((): Omit<AppUser, 'password'>[] => {
-    return users.map(({ password, ...rest }) => rest);
-  }, [users]);
+  const deleteUser = useCallback(async (userId: string): Promise<boolean> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      body: { action: 'delete', userId },
+    });
+
+    return !error && !data?.error;
+  }, []);
+
+  const listUsers = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return [];
+
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      body: { action: 'list' },
+    });
+
+    if (error || data?.error) return [];
+    return data?.users || [];
+  }, []);
+
+  const updateUserPassword = useCallback(async (userId: string, password: string): Promise<boolean> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      body: { action: 'update-password', userId, password },
+    });
+
+    return !error && !data?.error;
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated: !!user, 
-      login, 
-      logout, 
-      updateUserCredentials,
-      addUser,
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!user,
+      isLoading,
+      login,
+      logout,
+      changePassword,
+      createUser,
       deleteUser,
-      getUsers
+      listUsers,
+      updateUserPassword,
     }}>
       {children}
     </AuthContext.Provider>
