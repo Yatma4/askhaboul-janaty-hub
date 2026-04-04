@@ -7,8 +7,9 @@
  import { useEvents, useAddEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents';
  import { useCotisations, useAddCotisation, useUpdateCotisation } from '@/hooks/useCotisations';
  import { useTransactions, useAddTransaction } from '@/hooks/useTransactions';
- import { useReportHistory, useAddReportHistory } from '@/hooks/useReportHistory';
- import { useSecurityCodes, useUpdateSecurityCodes } from '@/hooks/useSecurityCodes';
+import { useReportHistory, useAddReportHistory } from '@/hooks/useReportHistory';
+import { useSecurityCodes, useUpdateSecurityCodes } from '@/hooks/useSecurityCodes';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 
 export interface ReportHistory {
   id: string;
@@ -59,6 +60,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
    const queryClient = useQueryClient();
+   useRealtimeSync();
    
    // Fetch data using hooks
    const { data: members = [], isLoading: membersLoading } = useMembers();

@@ -1,7 +1,6 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
  import { Transaction } from '@/types';
- import { useRealtimeSync } from './useRealtimeSync';
 
  const TRANSACTIONS_KEY = ['transactions'];
  
@@ -26,7 +25,6 @@
  });
  
  export const useTransactions = () => {
-   useRealtimeSync('transactions', TRANSACTIONS_KEY);
    return useQuery({
      queryKey: TRANSACTIONS_KEY,
      queryFn: async () => {

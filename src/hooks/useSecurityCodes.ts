@@ -1,6 +1,5 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
- import { useRealtimeSync } from './useRealtimeSync';
 
  const SECURITY_CODES_KEY = ['securityCodes'];
  
@@ -16,7 +15,6 @@
  }
  
  export const useSecurityCodes = () => {
-   useRealtimeSync('security_codes', SECURITY_CODES_KEY);
    return useQuery({
      queryKey: SECURITY_CODES_KEY,
      queryFn: async () => {

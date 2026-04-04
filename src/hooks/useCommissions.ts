@@ -1,7 +1,6 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
  import { Commission } from '@/types';
- import { useRealtimeSync } from './useRealtimeSync';
 
  const COMMISSIONS_KEY = ['commissions'];
  
@@ -24,7 +23,6 @@
  });
  
  export const useCommissions = () => {
-   useRealtimeSync('commissions', COMMISSIONS_KEY);
    return useQuery({
      queryKey: COMMISSIONS_KEY,
      queryFn: async () => {

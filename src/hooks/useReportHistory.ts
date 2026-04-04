@@ -1,7 +1,6 @@
  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
  import { supabase } from '@/integrations/supabase/client';
  import { ReportHistory } from '@/contexts/DataContext';
- import { useRealtimeSync } from './useRealtimeSync';
 
  const REPORT_HISTORY_KEY = ['reportHistory'];
  
@@ -24,7 +23,6 @@
  });
  
  export const useReportHistory = () => {
-   useRealtimeSync('report_history', REPORT_HISTORY_KEY);
    return useQuery({
      queryKey: REPORT_HISTORY_KEY,
      queryFn: async () => {
