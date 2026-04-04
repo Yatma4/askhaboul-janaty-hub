@@ -13,8 +13,48 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify the caller is an admin
+    const body = await req.json();
+    const { action, ...params } = body;
+
+    // Public action: get email by username (no auth required for login flow)
+    if (action === "get-email-by-username") {
+      const { username } = params;
+      if (!username) {
+        return new Response(JSON.stringify({ error: "Nom d'utilisateur requis" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("user_id")
+        .eq("username", username)
+        .single();
+
+      if (!profile) {
+        return new Response(JSON.stringify({ error: "Utilisateur non trouvé" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: { user }, error } = await supabaseClient.auth.admin.getUserById(profile.user_id);
+      if (error || !user) {
+        return new Response(JSON.stringify({ error: "Utilisateur non trouvé" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ email: user.email }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // All other actions require admin auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Non autorisé" }), {
@@ -23,10 +63,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!);
-
-    // Get the calling user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user: caller }, error: authError } = await anonClient.auth.getUser(token);
     if (authError || !caller) {
@@ -51,11 +88,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, ...params } = await req.json();
-
     if (action === "create") {
       const { email, password, username, role } = params;
-
       if (!email || !password || !username) {
         return new Response(JSON.stringify({ error: "Email, mot de passe et nom d'utilisateur requis" }), {
           status: 400,
@@ -63,7 +97,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Create auth user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
         email,
         password,
@@ -78,7 +111,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Assign role
       if (newUser.user) {
         await supabaseClient.from("user_roles").insert({
           user_id: newUser.user.id,
@@ -99,8 +131,6 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      // Don't allow deleting yourself
       if (userId === caller.id) {
         return new Response(JSON.stringify({ error: "Vous ne pouvez pas supprimer votre propre compte" }), {
           status: 400,
@@ -130,7 +160,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Get roles for all users
       const { data: roles } = await supabaseClient.from("user_roles").select("user_id, role");
       const { data: profiles } = await supabaseClient.from("profiles").select("user_id, username");
 

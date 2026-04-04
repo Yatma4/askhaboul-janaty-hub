@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LoginPage = () => {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -20,13 +20,13 @@ const LoginPage = () => {
     setError("");
     setIsLoading(true);
 
-    if (!email.trim() || !password.trim()) {
+    if (!username.trim() || !password.trim()) {
       setError("Veuillez remplir tous les champs");
       setIsLoading(false);
       return;
     }
 
-    const success = await login(email, password);
+    const success = await login(username, password);
 
     if (!success) {
       setError("Identifiants incorrects");
@@ -37,14 +37,12 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
-      {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
       </div>
 
       <div className="relative w-full max-w-md animate-fade-in">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-primary shadow-xl shadow-primary/25 mb-6">
             <Star className="w-10 h-10 text-primary-foreground" />
@@ -68,15 +66,15 @@ const LoginPage = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Nom d'utilisateur</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="Entrez votre adresse email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="Entrez votre nom d'utilisateur"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="h-12"
-                  autoComplete="email"
+                  autoComplete="username"
                 />
               </div>
 
