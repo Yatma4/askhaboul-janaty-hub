@@ -54,6 +54,61 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Public action: reset password with security code
+    if (action === "reset-password-with-code") {
+      const { username, securityCode, newPassword } = params;
+      if (!username || !securityCode || !newPassword) {
+        return new Response(JSON.stringify({ error: "Tous les champs sont requis" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify security code
+      const { data: codes } = await supabaseClient
+        .from("security_codes")
+        .select("reset_code")
+        .limit(1)
+        .single();
+
+      if (!codes || codes.reset_code !== securityCode) {
+        return new Response(JSON.stringify({ error: "Code de sécurité incorrect" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Find user by username
+      const { data: profile } = await supabaseClient
+        .from("profiles")
+        .select("user_id")
+        .eq("username", username)
+        .single();
+
+      if (!profile) {
+        return new Response(JSON.stringify({ error: "Utilisateur non trouvé" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Update password
+      const { error: updateError } = await supabaseClient.auth.admin.updateUserById(profile.user_id, {
+        password: newPassword,
+      });
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // All other actions require admin auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
