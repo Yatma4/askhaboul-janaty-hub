@@ -38,6 +38,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [users, setUsers] = useState<AppUser[]>(() => {
+    const savedVersion = localStorage.getItem(USERS_VERSION_KEY);
+    if (savedVersion !== CURRENT_VERSION) {
+      localStorage.removeItem(USERS_STORAGE_KEY);
+      localStorage.setItem(USERS_VERSION_KEY, CURRENT_VERSION);
+      return DEFAULT_USERS;
+    }
     const saved = localStorage.getItem(USERS_STORAGE_KEY);
     return saved ? JSON.parse(saved) : DEFAULT_USERS;
   });
