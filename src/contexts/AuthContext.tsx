@@ -73,30 +73,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    // Look up email from profiles table by username
-    const { data: profile } = await supabase
-      .from('profiles' as any)
-      .select('user_id')
-      .eq('username', username)
-      .single();
+    // Use edge function to look up email by username (bypasses RLS)
+    const { data: userData, error: fnError } = await supabase.functions.invoke('manage-users', {
+      body: { action: 'get-email-by-username', username },
+    });
 
-    if (!profile) {
-      // Fallback: try as email directly
+    if (fnError || !userData?.email) {
+      // Fallback: try username as email directly
       const { error } = await supabase.auth.signInWithPassword({ email: username, password });
       return !error;
     }
 
-    // Get user email from auth via a workaround: try signing in with all known info
-    // We need the email, so let's store it in profiles
-    // For now, use the manage-users edge function to look up
-    const { data: userData } = await supabase.functions.invoke('manage-users', {
-      body: { action: 'get-email-by-username', username },
-    });
-
-    if (userData?.email) {
-      const { error } = await supabase.auth.signInWithPassword({ email: userData.email, password });
-      return !error;
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email: userData.email, password });
+    if (!error) return true;
 
     return false;
   }, []);
