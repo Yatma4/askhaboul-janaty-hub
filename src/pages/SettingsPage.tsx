@@ -13,13 +13,13 @@ import {
   Star, 
   UserPlus, 
   Trash2, 
-  Edit2,
   Eye,
   EyeOff,
   Save,
-  Lock
+  Lock,
+  KeyRound
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -44,26 +44,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { UserRole } from '@/types';
 
 type SettingsTab = 'general' | 'profile' | 'security' | 'notifications' | 'users';
 
 interface AppUser {
   id: string;
+  email: string;
   username: string;
-  role: 'admin' | 'user';
-  email?: string;
-  createdAt: Date;
+  role: UserRole;
+  created_at: string;
 }
 
 const SettingsPage = () => {
-  const { user, updateUserCredentials, addUser, deleteUser, getUsers } = useAuth();
+  const { user, changePassword, createUser, deleteUser, listUsers, updateUserPassword } = useAuth();
   const { securityCodes, updateSecurityCodes } = useData();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editUsername, setEditUsername] = useState('');
-  const [editPassword, setEditPassword] = useState('');
+  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
   
   const [dahiraInfo, setDahiraInfo] = useState({
     name: 'Dahira Daara Askhaboul Janaty',
@@ -74,12 +76,11 @@ const SettingsPage = () => {
 
   const [profileInfo, setProfileInfo] = useState({
     displayName: user?.username || '',
-    email: 'admin@dahira.sn',
+    email: '',
     phone: '+221 77 000 00 00',
   });
 
   const [securitySettings, setSecuritySettings] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -97,18 +98,25 @@ const SettingsPage = () => {
     weeklyReports: true,
   });
 
-  const appUsers = getUsers().map(u => ({
-    ...u,
-    email: u.username + '@dahira.sn',
-    createdAt: new Date(),
-  }));
-
   const [newUser, setNewUser] = useState({
     username: '',
     email: '',
     password: '',
-    role: 'user' as 'admin' | 'user',
+    role: 'user' as UserRole,
   });
+
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    const users = await listUsers();
+    setAppUsers(users);
+    setIsLoadingUsers(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users' && user?.role === 'admin') {
+      loadUsers();
+    }
+  }, [activeTab]);
 
   const handleSave = () => {
     toast.success('Paramètres enregistrés avec succès');
@@ -118,7 +126,7 @@ const SettingsPage = () => {
     toast.success('Profil mis à jour avec succès');
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (securitySettings.newPassword !== securitySettings.confirmPassword) {
       toast.error('Les mots de passe ne correspondent pas');
       return;
@@ -127,8 +135,13 @@ const SettingsPage = () => {
       toast.error('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    toast.success('Mot de passe modifié avec succès');
-    setSecuritySettings({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const success = await changePassword(securitySettings.newPassword);
+    if (success) {
+      toast.success('Mot de passe modifié avec succès');
+      setSecuritySettings({ newPassword: '', confirmPassword: '' });
+    } else {
+      toast.error('Erreur lors du changement de mot de passe');
+    }
   };
 
   const handleSaveSecurityCodes = () => {
@@ -143,42 +156,49 @@ const SettingsPage = () => {
     toast.success('Codes de sécurité mis à jour avec succès');
   };
 
-  const handleAddUser = () => {
-    if (!newUser.username || !newUser.password) {
+  const handleAddUser = async () => {
+    if (!newUser.username || !newUser.email || !newUser.password) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
-    addUser(newUser.username, newUser.password, newUser.role);
-    setNewUser({ username: '', email: '', password: '', role: 'user' });
-    setShowAddUserDialog(false);
-    toast.success(`Utilisateur "${newUser.username}" créé avec succès`);
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    const success = deleteUser(userId);
-    if (!success) {
-      toast.error('Impossible de supprimer le compte administrateur principal');
+    if (newUser.password.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    toast.success('Utilisateur supprimé');
+    const success = await createUser(newUser.email, newUser.password, newUser.username, newUser.role);
+    if (success) {
+      setNewUser({ username: '', email: '', password: '', role: 'user' });
+      setShowAddUserDialog(false);
+      toast.success(`Utilisateur "${newUser.username}" créé avec succès`);
+      loadUsers();
+    } else {
+      toast.error('Erreur lors de la création de l\'utilisateur');
+    }
   };
 
-  const handleEditUser = (userId: string, currentUsername: string) => {
-    setEditingUserId(userId);
-    setEditUsername(currentUsername);
-    setEditPassword('');
+  const handleDeleteUser = async (userId: string) => {
+    const success = await deleteUser(userId);
+    if (success) {
+      toast.success('Utilisateur supprimé');
+      loadUsers();
+    } else {
+      toast.error('Erreur lors de la suppression');
+    }
   };
 
-  const handleSaveUserCredentials = () => {
-    if (!editingUserId || !editUsername.trim() || !editPassword.trim()) {
-      toast.error('Veuillez remplir le nom d\'utilisateur et le mot de passe');
+  const handleResetPassword = async () => {
+    if (!resetPasswordUserId || !resetPasswordValue || resetPasswordValue.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    updateUserCredentials(editingUserId, editUsername, editPassword);
-    setEditingUserId(null);
-    setEditUsername('');
-    setEditPassword('');
-    toast.success('Identifiants mis à jour avec succès');
+    const success = await updateUserPassword(resetPasswordUserId, resetPasswordValue);
+    if (success) {
+      toast.success('Mot de passe réinitialisé avec succès');
+      setResetPasswordUserId(null);
+      setResetPasswordValue('');
+    } else {
+      toast.error('Erreur lors de la réinitialisation');
+    }
   };
 
   const renderContent = () => {
@@ -186,7 +206,6 @@ const SettingsPage = () => {
       case 'general':
         return (
           <div className="space-y-6">
-            {/* Dahira Info */}
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Informations du Dahira</CardTitle>
@@ -198,42 +217,23 @@ const SettingsPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nom du Dahira</Label>
-                    <Input
-                      id="name"
-                      value={dahiraInfo.name}
-                      onChange={(e) => setDahiraInfo({ ...dahiraInfo, name: e.target.value })}
-                    />
+                    <Input id="name" value={dahiraInfo.name} onChange={(e) => setDahiraInfo({ ...dahiraInfo, name: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Téléphone</Label>
-                    <Input
-                      id="phone"
-                      value={dahiraInfo.phone}
-                      onChange={(e) => setDahiraInfo({ ...dahiraInfo, phone: e.target.value })}
-                    />
+                    <Input id="phone" value={dahiraInfo.phone} onChange={(e) => setDahiraInfo({ ...dahiraInfo, phone: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={dahiraInfo.email}
-                      onChange={(e) => setDahiraInfo({ ...dahiraInfo, email: e.target.value })}
-                    />
+                    <Input id="email" type="email" value={dahiraInfo.email} onChange={(e) => setDahiraInfo({ ...dahiraInfo, email: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="address">Adresse</Label>
-                    <Input
-                      id="address"
-                      value={dahiraInfo.address}
-                      onChange={(e) => setDahiraInfo({ ...dahiraInfo, address: e.target.value })}
-                    />
+                    <Input id="address" value={dahiraInfo.address} onChange={(e) => setDahiraInfo({ ...dahiraInfo, address: e.target.value })} />
                   </div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Save Button */}
             <div className="flex justify-end">
               <Button variant="gradient" size="lg" onClick={handleSave}>
                 <Save className="w-4 h-4 mr-2" />
@@ -249,9 +249,7 @@ const SettingsPage = () => {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Mon Profil</CardTitle>
-                <CardDescription>
-                  Gérez vos informations personnelles
-                </CardDescription>
+                <CardDescription>Gérez vos informations personnelles</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-6 mb-6">
@@ -267,45 +265,18 @@ const SettingsPage = () => {
                     </p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="displayName">Nom d'affichage</Label>
-                    <Input
-                      id="displayName"
-                      value={profileInfo.displayName}
-                      onChange={(e) => setProfileInfo({ ...profileInfo, displayName: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profileEmail">Email</Label>
-                    <Input
-                      id="profileEmail"
-                      type="email"
-                      value={profileInfo.email}
-                      onChange={(e) => setProfileInfo({ ...profileInfo, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profilePhone">Téléphone</Label>
-                    <Input
-                      id="profilePhone"
-                      value={profileInfo.phone}
-                      onChange={(e) => setProfileInfo({ ...profileInfo, phone: e.target.value })}
-                    />
+                    <Input id="displayName" value={profileInfo.displayName} onChange={(e) => setProfileInfo({ ...profileInfo, displayName: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role">Rôle</Label>
-                    <Input
-                      id="role"
-                      value={user?.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
-                      disabled
-                    />
+                    <Input id="role" value={user?.role === 'admin' ? 'Administrateur' : 'Utilisateur'} disabled />
                   </div>
                 </div>
               </CardContent>
             </Card>
-
             <div className="flex justify-end">
               <Button variant="gradient" size="lg" onClick={handleSaveProfile}>
                 <Save className="w-4 h-4 mr-2" />
@@ -321,21 +292,19 @@ const SettingsPage = () => {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Sécurité du compte</CardTitle>
-                <CardDescription>
-                  Changez votre mot de passe et gérez la sécurité
-                </CardDescription>
+                <CardDescription>Changez votre mot de passe</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+                    <Label htmlFor="newPassword">Nouveau mot de passe</Label>
                     <div className="relative">
                       <Input
-                        id="currentPassword"
+                        id="newPassword"
                         type={showPassword ? 'text' : 'password'}
-                        value={securitySettings.currentPassword}
-                        onChange={(e) => setSecuritySettings({ ...securitySettings, currentPassword: e.target.value })}
-                        placeholder="Entrez votre mot de passe actuel"
+                        value={securitySettings.newPassword}
+                        onChange={(e) => setSecuritySettings({ ...securitySettings, newPassword: e.target.value })}
+                        placeholder="Au moins 6 caractères"
                       />
                       <button
                         type="button"
@@ -345,16 +314,6 @@ const SettingsPage = () => {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={securitySettings.newPassword}
-                      onChange={(e) => setSecuritySettings({ ...securitySettings, newPassword: e.target.value })}
-                      placeholder="Au moins 6 caractères"
-                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe</Label>
@@ -367,7 +326,6 @@ const SettingsPage = () => {
                     />
                   </div>
                 </div>
-
                 <div className="pt-4 border-t border-border">
                   <Button variant="gradient" onClick={handleChangePassword}>
                     <Shield className="w-4 h-4 mr-2" />
@@ -398,9 +356,7 @@ const SettingsPage = () => {
                       onChange={(e) => setCodeSettings({ ...codeSettings, archiveCode: e.target.value.toUpperCase() })}
                       placeholder="Code pour archiver"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Utilisé pour confirmer l'archivage des données
-                    </p>
+                    <p className="text-xs text-muted-foreground">Utilisé pour confirmer l'archivage des données</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="resetCode">Code de réinitialisation</Label>
@@ -411,9 +367,7 @@ const SettingsPage = () => {
                       onChange={(e) => setCodeSettings({ ...codeSettings, resetCode: e.target.value.toUpperCase() })}
                       placeholder="Code pour réinitialiser"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Utilisé pour confirmer la réinitialisation complète
-                    </p>
+                    <p className="text-xs text-muted-foreground">Utilisé pour confirmer la réinitialisation complète</p>
                   </div>
                 </div>
                 <div className="pt-4 border-t border-border">
@@ -421,26 +375,6 @@ const SettingsPage = () => {
                     <Save className="w-4 h-4 mr-2" />
                     Enregistrer les codes
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Sessions actives</CardTitle>
-                <CardDescription>
-                  Gérez vos sessions de connexion
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="p-4 rounded-lg bg-secondary/30 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Session actuelle</p>
-                    <p className="text-sm text-muted-foreground">Connecté maintenant</p>
-                  </div>
-                  <span className="px-3 py-1 text-xs font-medium rounded-full bg-success/10 text-success">
-                    Active
-                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -453,70 +387,31 @@ const SettingsPage = () => {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle>Préférences de notifications</CardTitle>
-                <CardDescription>
-                  Configurez comment vous souhaitez recevoir les notifications
-                </CardDescription>
+                <CardDescription>Configurez comment vous souhaitez recevoir les notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                    <div>
-                      <p className="font-medium">Notifications par email</p>
-                      <p className="text-sm text-muted-foreground">Recevoir les notifications par email</p>
+                  {[
+                    { key: 'emailNotifications', label: 'Notifications par email', desc: 'Recevoir les notifications par email' },
+                    { key: 'cotisationReminders', label: 'Rappels de cotisations', desc: 'Rappeler aux membres de payer leurs cotisations' },
+                    { key: 'eventReminders', label: "Rappels d'événements", desc: 'Notifications avant les événements à venir' },
+                    { key: 'newMemberAlerts', label: 'Alertes nouveaux membres', desc: "Notification lors de l'ajout d'un nouveau membre" },
+                    { key: 'weeklyReports', label: 'Rapports hebdomadaires', desc: 'Recevoir un résumé hebdomadaire par email' },
+                  ].map(({ key, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
+                      <div>
+                        <p className="font-medium">{label}</p>
+                        <p className="text-sm text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={notifications[key as keyof typeof notifications]}
+                        onCheckedChange={(checked) => setNotifications({ ...notifications, [key]: checked })}
+                      />
                     </div>
-                    <Switch
-                      checked={notifications.emailNotifications}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, emailNotifications: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                    <div>
-                      <p className="font-medium">Rappels de cotisations</p>
-                      <p className="text-sm text-muted-foreground">Rappeler aux membres de payer leurs cotisations</p>
-                    </div>
-                    <Switch
-                      checked={notifications.cotisationReminders}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, cotisationReminders: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                    <div>
-                      <p className="font-medium">Rappels d'événements</p>
-                      <p className="text-sm text-muted-foreground">Notifications avant les événements à venir</p>
-                    </div>
-                    <Switch
-                      checked={notifications.eventReminders}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, eventReminders: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                    <div>
-                      <p className="font-medium">Alertes nouveaux membres</p>
-                      <p className="text-sm text-muted-foreground">Notification lors de l'ajout d'un nouveau membre</p>
-                    </div>
-                    <Switch
-                      checked={notifications.newMemberAlerts}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, newMemberAlerts: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-                    <div>
-                      <p className="font-medium">Rapports hebdomadaires</p>
-                      <p className="text-sm text-muted-foreground">Recevoir un résumé hebdomadaire par email</p>
-                    </div>
-                    <Switch
-                      checked={notifications.weeklyReports}
-                      onCheckedChange={(checked) => setNotifications({ ...notifications, weeklyReports: checked })}
-                    />
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-
             <div className="flex justify-end">
               <Button variant="gradient" size="lg" onClick={() => toast.success('Préférences de notifications enregistrées')}>
                 <Save className="w-4 h-4 mr-2" />
@@ -533,9 +428,7 @@ const SettingsPage = () => {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Gestion des utilisateurs</CardTitle>
-                  <CardDescription>
-                    Ajoutez et gérez les utilisateurs de l'application
-                  </CardDescription>
+                  <CardDescription>Ajoutez et gérez les utilisateurs de l'application</CardDescription>
                 </div>
                 <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
                   <DialogTrigger asChild>
@@ -547,9 +440,7 @@ const SettingsPage = () => {
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Nouvel utilisateur</DialogTitle>
-                      <DialogDescription>
-                        Créez un nouveau compte utilisateur pour l'application
-                      </DialogDescription>
+                      <DialogDescription>Créez un nouveau compte utilisateur</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
                       <div className="space-y-2">
@@ -562,7 +453,7 @@ const SettingsPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="newUserEmail">Email</Label>
+                        <Label htmlFor="newUserEmail">Email *</Label>
                         <Input
                           id="newUserEmail"
                           type="email"
@@ -585,7 +476,7 @@ const SettingsPage = () => {
                         <Label htmlFor="newUserRole">Rôle</Label>
                         <Select
                           value={newUser.role}
-                          onValueChange={(value: 'admin' | 'user') => setNewUser({ ...newUser, role: value })}
+                          onValueChange={(value: UserRole) => setNewUser({ ...newUser, role: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -597,40 +488,33 @@ const SettingsPage = () => {
                         </Select>
                       </div>
                       <div className="flex justify-end gap-2 pt-4">
-                        <Button variant="outline" onClick={() => setShowAddUserDialog(false)}>
-                          Annuler
-                        </Button>
-                        <Button variant="gradient" onClick={handleAddUser}>
-                          Créer l'utilisateur
-                        </Button>
+                        <Button variant="outline" onClick={() => setShowAddUserDialog(false)}>Annuler</Button>
+                        <Button variant="gradient" onClick={handleAddUser}>Créer l'utilisateur</Button>
                       </div>
                     </div>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Utilisateur</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Rôle</TableHead>
-                      <TableHead>Date de création</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appUsers.map((appUser) => (
-                      <TableRow key={appUser.id}>
-                        <TableCell className="font-medium">
-                          {editingUserId === appUser.id ? (
-                            <Input
-                              value={editUsername}
-                              onChange={(e) => setEditUsername(e.target.value)}
-                              placeholder="Nom d'utilisateur"
-                              className="h-8"
-                            />
-                          ) : (
+                {isLoadingUsers ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Utilisateur</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Rôle</TableHead>
+                        <TableHead>Date de création</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {appUsers.map((appUser) => (
+                        <TableRow key={appUser.id}>
+                          <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                                 <span className="text-sm font-semibold text-primary">
@@ -639,84 +523,68 @@ const SettingsPage = () => {
                               </div>
                               {appUser.username}
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {editingUserId === appUser.id ? (
-                            <Input
-                              type="password"
-                              value={editPassword}
-                              onChange={(e) => setEditPassword(e.target.value)}
-                              placeholder="Nouveau mot de passe"
-                              className="h-8"
-                            />
-                          ) : (
-                            appUser.email || '-'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            appUser.role === 'admin' 
-                              ? 'bg-primary/10 text-primary' 
-                              : 'bg-secondary text-muted-foreground'
-                          }`}>
-                            {appUser.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {appUser.createdAt.toLocaleDateString('fr-FR')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {editingUserId === appUser.id ? (
-                              <>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={handleSaveUserCredentials}
-                                >
-                                  <Save className="w-4 h-4 mr-1" />
-                                  Sauver
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingUserId(null);
-                                    setEditUsername('');
-                                    setEditPassword('');
-                                  }}
-                                >
-                                  Annuler
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8"
-                                  onClick={() => handleEditUser(appUser.id, appUser.username)}
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteUser(appUser.id)}
-                                  disabled={appUser.id === '1'}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          </TableCell>
+                          <TableCell>{appUser.email}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              appUser.role === 'admin' 
+                                ? 'bg-primary/10 text-primary' 
+                                : 'bg-secondary text-muted-foreground'
+                            }`}>
+                              {appUser.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(appUser.created_at).toLocaleDateString('fr-FR')}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              {resetPasswordUserId === appUser.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="password"
+                                    value={resetPasswordValue}
+                                    onChange={(e) => setResetPasswordValue(e.target.value)}
+                                    placeholder="Nouveau mot de passe"
+                                    className="h-8 w-40"
+                                  />
+                                  <Button variant="ghost" size="sm" onClick={handleResetPassword}>
+                                    <Save className="w-4 h-4 mr-1" />
+                                    Sauver
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => { setResetPasswordUserId(null); setResetPasswordValue(''); }}>
+                                    Annuler
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8"
+                                    onClick={() => setResetPasswordUserId(appUser.id)}
+                                    title="Réinitialiser le mot de passe"
+                                  >
+                                    <KeyRound className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteUser(appUser.id)}
+                                    disabled={appUser.id === user?.id}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -726,18 +594,14 @@ const SettingsPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Paramètres</h1>
-          <p className="text-muted-foreground mt-1">
-            Configuration de l'application
-          </p>
+          <p className="text-muted-foreground mt-1">Configuration de l'application</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar */}
         <div className="space-y-4">
           <Card className="border-0 shadow-lg">
             <CardContent className="p-6">
@@ -757,48 +621,27 @@ const SettingsPage = () => {
 
           <Card className="border-0 shadow-lg">
             <CardContent className="p-4 space-y-2">
-              <button 
-                onClick={() => setActiveTab('general')}
-                className={`nav-item w-full ${activeTab === 'general' ? 'nav-item-active' : ''}`}
-              >
-                <Settings className="w-5 h-5" />
-                <span>Général</span>
+              <button onClick={() => setActiveTab('general')} className={`nav-item w-full ${activeTab === 'general' ? 'nav-item-active' : ''}`}>
+                <Settings className="w-5 h-5" /><span>Général</span>
               </button>
-              <button 
-                onClick={() => setActiveTab('profile')}
-                className={`nav-item w-full ${activeTab === 'profile' ? 'nav-item-active' : ''}`}
-              >
-                <User className="w-5 h-5" />
-                <span>Profil</span>
+              <button onClick={() => setActiveTab('profile')} className={`nav-item w-full ${activeTab === 'profile' ? 'nav-item-active' : ''}`}>
+                <User className="w-5 h-5" /><span>Profil</span>
               </button>
-              <button 
-                onClick={() => setActiveTab('security')}
-                className={`nav-item w-full ${activeTab === 'security' ? 'nav-item-active' : ''}`}
-              >
-                <Shield className="w-5 h-5" />
-                <span>Sécurité</span>
+              <button onClick={() => setActiveTab('security')} className={`nav-item w-full ${activeTab === 'security' ? 'nav-item-active' : ''}`}>
+                <Shield className="w-5 h-5" /><span>Sécurité</span>
               </button>
-              <button 
-                onClick={() => setActiveTab('notifications')}
-                className={`nav-item w-full ${activeTab === 'notifications' ? 'nav-item-active' : ''}`}
-              >
-                <Bell className="w-5 h-5" />
-                <span>Notifications</span>
+              <button onClick={() => setActiveTab('notifications')} className={`nav-item w-full ${activeTab === 'notifications' ? 'nav-item-active' : ''}`}>
+                <Bell className="w-5 h-5" /><span>Notifications</span>
               </button>
               {user?.role === 'admin' && (
-                <button 
-                  onClick={() => setActiveTab('users')}
-                  className={`nav-item w-full ${activeTab === 'users' ? 'nav-item-active' : ''}`}
-                >
-                  <UserPlus className="w-5 h-5" />
-                  <span>Utilisateurs</span>
+                <button onClick={() => setActiveTab('users')} className={`nav-item w-full ${activeTab === 'users' ? 'nav-item-active' : ''}`}>
+                  <UserPlus className="w-5 h-5" /><span>Utilisateurs</span>
                 </button>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
         <div className="lg:col-span-3">
           {renderContent()}
         </div>

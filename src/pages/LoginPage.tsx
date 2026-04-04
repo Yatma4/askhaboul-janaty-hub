@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LoginPage = () => {
   const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -20,13 +20,13 @@ const LoginPage = () => {
     setError("");
     setIsLoading(true);
 
-    if (!username.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       setError("Veuillez remplir tous les champs");
       setIsLoading(false);
       return;
     }
 
-    const success = await login(username, password);
+    const success = await login(email, password);
 
     if (!success) {
       setError("Identifiants incorrects");
@@ -68,15 +68,15 @@ const LoginPage = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="username">Nom d'utilisateur</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="username"
-                  type="text"
-                  placeholder="Entrez votre nom d'utilisateur"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="Entrez votre adresse email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="h-12"
-                  autoComplete="username"
+                  autoComplete="email"
                 />
               </div>
 
@@ -107,13 +107,10 @@ const LoginPage = () => {
               </Button>
             </form>
 
-            {/* Demo credentials */}
             <div className="mt-6 p-4 rounded-lg bg-secondary/50 border border-border">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Comptes de démonstration :</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p><span className="font-medium">Admin:</span> admin / admin123</p>
-                <p><span className="font-medium">Utilisateur:</span> user / user123</p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Contactez un administrateur pour obtenir vos identifiants de connexion.
+              </p>
             </div>
           </CardContent>
         </Card>
