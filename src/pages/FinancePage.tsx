@@ -670,6 +670,28 @@ const FinancePage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette transaction ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. La transaction sera définitivement supprimée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (transactionToDelete) deleteTransaction(transactionToDelete);
+                setTransactionToDelete(null);
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
