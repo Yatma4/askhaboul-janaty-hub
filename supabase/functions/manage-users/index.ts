@@ -118,15 +118,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user: caller }, error: authError } = await anonClient.auth.getUser(token);
-    if (authError || !caller) {
+    const { data: claimsData, error: authError } = await supabaseClient.auth.getClaims(token);
+    const callerId = claimsData?.claims?.sub as string | undefined;
+    if (authError || !callerId) {
       return new Response(JSON.stringify({ error: "Non autorisé" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const caller = { id: callerId };
 
     // Check if caller is admin
     const { data: callerRole } = await supabaseClient
