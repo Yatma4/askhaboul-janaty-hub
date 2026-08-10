@@ -83,3 +83,31 @@
      },
    });
  };
+export const useUpdateTransaction = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Omit<Transaction, 'id'>> }) => {
+      const payload: Record<string, unknown> = {};
+      if (updates.eventId !== undefined) payload.event_id = updates.eventId;
+      if (updates.type !== undefined) payload.type = updates.type;
+      if (updates.category !== undefined) payload.category = updates.category;
+      if (updates.amount !== undefined) payload.amount = updates.amount;
+      if (updates.description !== undefined) payload.description = updates.description;
+      if (updates.date !== undefined) payload.date = updates.date.toISOString();
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return mapDbToTransaction(data as DbTransaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+};
