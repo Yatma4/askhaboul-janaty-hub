@@ -45,6 +45,8 @@ interface DataContextType {
   addCotisation: (cotisation: Omit<Cotisation, 'id'>) => void;
   updateCotisation: (id: string, cotisation: Partial<Cotisation>) => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  updateTransaction: (id: string, transaction: Partial<Omit<Transaction, 'id'>>) => void;
+  deleteTransaction: (id: string) => void;
   resetData: () => void;
   archiveAndClearData: () => void;
   addReportToHistory: (report: Omit<ReportHistory, 'id' | 'date'>) => void;
