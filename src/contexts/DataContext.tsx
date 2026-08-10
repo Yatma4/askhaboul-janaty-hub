@@ -6,7 +6,7 @@
  import { useCommissions, useAddCommission, useUpdateCommission, useDeleteCommission } from '@/hooks/useCommissions';
  import { useEvents, useAddEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents';
  import { useCotisations, useAddCotisation, useUpdateCotisation } from '@/hooks/useCotisations';
- import { useTransactions, useAddTransaction } from '@/hooks/useTransactions';
+ import { useTransactions, useAddTransaction, useUpdateTransaction, useDeleteTransaction } from '@/hooks/useTransactions';
 import { useReportHistory, useAddReportHistory } from '@/hooks/useReportHistory';
 import { useSecurityCodes, useUpdateSecurityCodes } from '@/hooks/useSecurityCodes';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
@@ -45,6 +45,8 @@ interface DataContextType {
   addCotisation: (cotisation: Omit<Cotisation, 'id'>) => void;
   updateCotisation: (id: string, cotisation: Partial<Cotisation>) => void;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  updateTransaction: (id: string, transaction: Partial<Omit<Transaction, 'id'>>) => void;
+  deleteTransaction: (id: string) => void;
   resetData: () => void;
   archiveAndClearData: () => void;
   addReportToHistory: (report: Omit<ReportHistory, 'id' | 'date'>) => void;
@@ -84,6 +86,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
    const addCotisationMutation = useAddCotisation();
    const updateCotisationMutation = useUpdateCotisation();
    const addTransactionMutation = useAddTransaction();
+   const updateTransactionMutation = useUpdateTransaction();
+   const deleteTransactionMutation = useDeleteTransaction();
    const addReportHistoryMutation = useAddReportHistory();
    const updateSecurityCodesMutation = useUpdateSecurityCodes();
    
@@ -132,6 +136,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
  
    const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
      addTransactionMutation.mutate(transaction);
+   };
+
+   const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id'>>) => {
+     updateTransactionMutation.mutate({ id, updates });
+   };
+
+   const deleteTransaction = (id: string) => {
+     deleteTransactionMutation.mutate(id);
    };
  
    const resetData = async () => {
@@ -212,6 +224,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCotisation,
       updateCotisation,
       addTransaction,
+      updateTransaction,
+      deleteTransaction,
       resetData,
       archiveAndClearData,
       addReportToHistory,

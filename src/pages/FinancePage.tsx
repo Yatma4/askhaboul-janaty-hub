@@ -36,8 +36,21 @@ import {
   ArrowUpRight, 
   ArrowDownRight,
   Users,
-  Search
+  Search,
+  Pencil,
+  Trash2
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Transaction } from '@/types';
 
 const FinancePage = () => {
   const { user } = useAuth();
@@ -48,7 +61,9 @@ const FinancePage = () => {
     transactions, 
     addCotisation, 
     updateCotisation, 
-    addTransaction 
+    addTransaction,
+    updateTransaction,
+    deleteTransaction
   } = useData();
 
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
@@ -66,6 +81,31 @@ const FinancePage = () => {
     paidAmount: 0,
   });
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+
+  const resetTransactionForm = () => {
+    setEditingTransactionId(null);
+    setTransactionForm({
+      eventId: '',
+      type: 'income',
+      category: '',
+      amount: 0,
+      description: '',
+    });
+  };
+
+  const openEditTransaction = (transaction: Transaction) => {
+    setEditingTransactionId(transaction.id);
+    setTransactionForm({
+      eventId: transaction.eventId,
+      type: transaction.type,
+      category: transaction.category,
+      amount: transaction.amount,
+      description: transaction.description,
+    });
+    setIsTransactionDialogOpen(true);
+  };
 
   const isAdmin = user?.role === 'admin';
 
@@ -106,18 +146,16 @@ const FinancePage = () => {
 
   const handleTransactionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addTransaction({
-      ...transactionForm,
-      date: new Date(),
-    });
+    if (editingTransactionId) {
+      updateTransaction(editingTransactionId, { ...transactionForm });
+    } else {
+      addTransaction({
+        ...transactionForm,
+        date: new Date(),
+      });
+    }
     setIsTransactionDialogOpen(false);
-    setTransactionForm({
-      eventId: '',
-      type: 'income',
-      category: '',
-      amount: 0,
-      description: '',
-    });
+    resetTransactionForm();
   };
 
   const handleCotisationSubmit = (e: React.FormEvent) => {
@@ -322,7 +360,7 @@ const FinancePage = () => {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
+            <Dialog open={isTransactionDialogOpen} onOpenChange={(open) => { setIsTransactionDialogOpen(open); if (!open) resetTransactionForm(); }}>
               <DialogTrigger asChild>
                 <Button variant="gradient">
                   <Plus className="w-4 h-4 mr-2" />
@@ -331,7 +369,7 @@ const FinancePage = () => {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Nouvelle transaction</DialogTitle>
+                  <DialogTitle>{editingTransactionId ? 'Modifier la transaction' : 'Nouvelle transaction'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleTransactionSubmit} className="space-y-4 mt-4">
                   <div className="space-y-2">
@@ -408,11 +446,11 @@ const FinancePage = () => {
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsTransactionDialogOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => { setIsTransactionDialogOpen(false); resetTransactionForm(); }}>
                       Annuler
                     </Button>
                     <Button type="submit" variant="gradient">
-                      Enregistrer
+                      {editingTransactionId ? 'Mettre à jour' : 'Enregistrer'}
                     </Button>
                   </div>
                 </form>
@@ -511,6 +549,7 @@ const FinancePage = () => {
                       <TableHead>Catégorie</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Montant</TableHead>
+                      {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -544,6 +583,28 @@ const FinancePage = () => {
                             {transaction.amount.toLocaleString()} F
                           </div>
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Modifier la transaction"
+                                onClick={() => openEditTransaction(transaction)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Supprimer la transaction"
+                                onClick={() => setTransactionToDelete(transaction.id)}
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -609,6 +670,28 @@ const FinancePage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => !open && setTransactionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette transaction ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. La transaction sera définitivement supprimée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (transactionToDelete) deleteTransaction(transactionToDelete);
+                setTransactionToDelete(null);
+              }}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
