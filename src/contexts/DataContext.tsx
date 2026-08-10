@@ -6,7 +6,7 @@
  import { useCommissions, useAddCommission, useUpdateCommission, useDeleteCommission } from '@/hooks/useCommissions';
  import { useEvents, useAddEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents';
  import { useCotisations, useAddCotisation, useUpdateCotisation } from '@/hooks/useCotisations';
- import { useTransactions, useAddTransaction } from '@/hooks/useTransactions';
+ import { useTransactions, useAddTransaction, useUpdateTransaction, useDeleteTransaction } from '@/hooks/useTransactions';
 import { useReportHistory, useAddReportHistory } from '@/hooks/useReportHistory';
 import { useSecurityCodes, useUpdateSecurityCodes } from '@/hooks/useSecurityCodes';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
