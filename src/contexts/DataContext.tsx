@@ -86,6 +86,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
    const addCotisationMutation = useAddCotisation();
    const updateCotisationMutation = useUpdateCotisation();
    const addTransactionMutation = useAddTransaction();
+   const updateTransactionMutation = useUpdateTransaction();
+   const deleteTransactionMutation = useDeleteTransaction();
    const addReportHistoryMutation = useAddReportHistory();
    const updateSecurityCodesMutation = useUpdateSecurityCodes();
    
@@ -134,6 +136,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
  
    const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
      addTransactionMutation.mutate(transaction);
+   };
+
+   const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id'>>) => {
+     updateTransactionMutation.mutate({ id, updates });
+   };
+
+   const deleteTransaction = (id: string) => {
+     deleteTransactionMutation.mutate(id);
    };
  
    const resetData = async () => {
@@ -214,6 +224,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCotisation,
       updateCotisation,
       addTransaction,
+      updateTransaction,
+      deleteTransaction,
       resetData,
       archiveAndClearData,
       addReportToHistory,
